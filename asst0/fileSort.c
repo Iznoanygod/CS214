@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include "fileSort.h"
 int main(int argc, char** argv){
-    printf("%d\n", stringCompare(argv[1], argv[2]));
     if(argc != 3){
         printf("Fatal Error: Expected two arguments, had %d\n", (argc-1));
         return 0;
