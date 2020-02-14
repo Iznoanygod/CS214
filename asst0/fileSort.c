@@ -10,6 +10,13 @@ int main(int argc, char** argv){
     return 0;
 }
 
+int intCompare(int arg1, int arg2){
+    if(arg1 == arg2){
+        return 0;
+    }
+    return arg1 > arg2 ? 1 : -1;
+}
+
 int stringCompare(char* arg1, char* arg2){
     int i = 0;
     while(1){
