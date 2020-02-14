@@ -7,6 +7,17 @@ int main(int argc, char** argv){
         printf("Fatal Error: Expected two arguments, had %d\n", (argc-1));
         return 0;
     }
+    int sortType;
+    if(!stringCompare(argv[1], "-q")){
+        sortType = 0;
+    }
+    else if(!stringCompare(argv[1], "-i")){
+        sortType = 1;
+    }
+    else{
+        printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
+        return 0;
+    }
     return 0;
 }
 
