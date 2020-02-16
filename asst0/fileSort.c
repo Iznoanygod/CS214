@@ -18,6 +18,13 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
+    Node a;
+    Node b;
+    a.value = (void*)1;
+    b.value = (void*)2;
+    a.next = &b;
+    b.next = NULL;
+    insertionSort(&a, (*intCompare)(1, 2));
     return 0;
 }
 
@@ -45,5 +52,17 @@ int stringCompare(char* arg1, char* arg2){
 }
 
 int insertionSort(void* toSort, int (*comparator)(void*, void*)){
+    Node* head = (Node*) toSort;
+    if(head == NULL)
+        return 0;
+    
+    Node* temp = head->next;
+    for(;temp != NULL; temp = temp->next){
+    
+    }
+    return 0;
+}
+int quickSort(void* toSort, int(*comparator)(void*, void*)){
+
     return 0;
 }
