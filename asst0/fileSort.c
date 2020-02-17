@@ -18,13 +18,6 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
-    Node a;
-    Node b;
-    a.value = (void*)1;
-    b.value = (void*)2;
-    a.next = &b;
-    b.next = NULL;
-    insertionSort(&a, (*intCompare)(1, 2));
     return 0;
 }
 
