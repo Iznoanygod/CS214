@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "fileSort.h"
 
 int main(int argc, char** argv){
@@ -18,41 +19,67 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
+    Node* a = malloc(sizeof(Node));
+    a->value = (void*)1;
+    Node* b = malloc(sizeof(Node));
+    b->value = (void*)50;
+    a->next = b;
+    b->next = NULL;
+    insertionSort(&a, *intCompare);
+
     return 0;
 }
 
-int intCompare(int arg1, int arg2){
+int intCompare(void* arg1, void* arg2){
     if(arg1 == arg2){
         return 0;
     }
     return arg1 > arg2 ? 1 : -1;
 }
 
-int stringCompare(char* arg1, char* arg2){
+int stringCompare(void* arg1, void* arg2){
+    char* a = arg1;
+    char* b = arg2;
     int i = 0;
     while(1){
-        if(arg1[i] == arg2[i] && arg1[i] == '\0'){
+        if(a[i] == b[i] && a[i] == '\0'){
             return 0;
         }
-        if(arg1[i] == arg2[i]){
+        if(a[i] == b[i]){
             i++;
             continue;
         }
         else{
-            return arg1[i] > arg2[i] ? 1 : -1;
+            return a[i] > b[i] ? 1 : -1;
         }
     }
 }
-
 int insertionSort(void* toSort, int (*comparator)(void*, void*)){
-    Node* head = (Node*) toSort;
+    Node* head = *((Node**) toSort);
     if(head == NULL)
         return 0;
-    
-    Node* temp = head->next;
-    for(;temp != NULL; temp = temp->next){
-    
+    Node* list = head->next;
+    head->next = NULL;
+    while(list != NULL){
+        if(comparator((void*)list->value, (void*) head->value) == -1){
+            Node* temp = list;
+            list = list->next;
+            temp->next = head;
+            head = temp;
+        }
+        else if(head->next == NULL){
+            Node *temp = list;
+            list = list->next;
+            head->next = temp;
+        }
+        else{
+            Node* leading = list->next;
+            Node* trailing = list;
+            
+        }
     }
+    Node** asd = (Node**) toSort;
+    *asd = head;
     return 0;
 }
 int quickSort(void* toSort, int(*comparator)(void*, void*)){

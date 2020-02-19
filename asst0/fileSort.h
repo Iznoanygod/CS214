@@ -2,8 +2,8 @@
 #define _FILESORT_H 1
 int insertionSort(void* toSort, int (*comparator)(void*, void*));
 int quicksort(void* toSort, int (*comparator)(void*, void*));
-int stringCompare(char* arg1, char* arg2);
-int intCompare(int arg1, int arg2);
+int stringCompare(void* arg1, void* arg2);
+int intCompare(void* arg1, void* arg2);
 typedef struct Node{
     void* value;
     struct Node* next;
