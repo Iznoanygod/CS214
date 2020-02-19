@@ -19,14 +19,6 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
-    Node* a = malloc(sizeof(Node));
-    a->value = (void*)1;
-    Node* b = malloc(sizeof(Node));
-    b->value = (void*)50;
-    a->next = b;
-    b->next = NULL;
-    insertionSort(&a, *intCompare);
-
     return 0;
 }
 
@@ -67,15 +59,17 @@ int insertionSort(void* toSort, int (*comparator)(void*, void*)){
             temp->next = head;
             head = temp;
         }
-        else if(head->next == NULL){
-            Node *temp = list;
-            list = list->next;
-            head->next = temp;
-        }
         else{
-            Node* leading = list->next;
-            Node* trailing = list;
-            
+            Node* leading = head->next;
+            Node* trailing = head;
+            while(leading != NULL && comparator((void*)list->value, (void*) leading->value) == -1){
+                leading = leading->next;
+                trailing = trailing->next;
+            }
+            Node* temp = list;
+            list = list->next;
+            trailing->next = temp;
+            temp->next = leading;
         }
     }
     Node** asd = (Node**) toSort;
