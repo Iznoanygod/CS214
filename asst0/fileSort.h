@@ -8,4 +8,14 @@ typedef struct Node{
     void* value;
     struct Node* next;
 }Node;
+void freeList(void* arg){
+    Node* leading = (Node*) arg;
+    while(1){
+        if(leading == NULL)
+            return;
+        Node* trailing = leading;
+        leading = leading->next;
+        free(trailing);
+    }
+}
 #endif

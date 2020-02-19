@@ -19,6 +19,7 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
+    
     return 0;
 }
 
