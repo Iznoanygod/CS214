@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "fileSort.h"
+#include <unistd.h>
+#include <fcntl.h>
 
 int main(int argc, char** argv){
     if(argc != 3){
@@ -19,27 +21,89 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
-    Node* a = malloc(sizeof(Node));
-    Node* b = malloc(sizeof(Node));
-    Node* c = malloc(sizeof(Node));
-    Node* d = malloc(sizeof(Node));
-    a->value = (void*)23;
-    b->value = (void*)12;
-    c->value = (void*)22;
-    d->value = (void*)1;
-    a->next = b;
-    b->next = c;
-    c->next = d;
-    d->next = NULL;
-    insertionSort(&a, *intCompare);
+    int fd = open(argv[2], O_RDONLY);
+    if(fd == -1){
+        printf("Fatal Error: file \"%s\" does not exist\n");
+        return 0;
+    }
+    Node* list = readFile(fd);
+    if(isInts){
+        sortType ? insertionSort(&list, *intCompare) : quickSort(&list, *intCompare);
+    
+    }
+    else{
+        sortType ? insertionSort(&list, *stringCompare) : quickSort(&list, *stringCompare);
+    }
+    Node* temp = list;
+    while(temp != NULL){
+        if(isInts)
+            printf("%d\n", *((int*)temp->value));
+        else
+            printf("%s\n", temp->value);
+        temp=temp->next;
+    }
+    freeList(list);
     return 0;
 }
 
+Node* readFile(int fd){
+    Node* list = NULL;
+    char* in = malloc(1);
+    char* word = malloc(1);
+    int length = 0;
+    word[0] = '\0';
+    while(read(fd, in, 1)){
+        if(in[0] == ','){
+            Node* temp = malloc(sizeof(Node));
+            temp->next = list;
+            if(isInts){
+                int* integ = malloc(sizeof(int));
+                *integ = atoi(word);
+                temp->value = integ;
+            }
+            else{
+                char* repl = malloc(length + 1);
+                memcpy(repl, word, length+1);
+                temp->value = repl;
+            }
+            list = temp;
+            word[0] = '\0';
+            length = 0;
+        }
+        else if(in[0] == ' ' || in[0] == '\n' || in[0] == '\t');
+        else{
+            isInts = isInts & isDigit(in[0]);
+            strncat(word, in, 1);
+            ++length;
+        }
+    }
+    if(word[0] != '\0'){
+        Node* temp = malloc(sizeof(Node));
+        temp->next = list;
+        if(isInts){
+            int* integ = malloc(sizeof(int));
+            *integ = atoi(word);
+            temp->value = integ;
+        }
+        else{
+            char* repl = malloc(length + 1);
+            memcpy(repl, word, length + 1);
+            temp->value = repl;
+        }
+        list = temp;
+    }
+    free(in);
+    free(word);
+    return list;
+}
+
 int intCompare(void* arg1, void* arg2){
-    if(arg1 == arg2){
+    int a = *((int*) arg1);
+    int b = *((int*) arg2);
+    if(a == b){
         return 0;
     }
-    return arg1 > arg2 ? 1 : -1;
+    return a > b ? 1 : -1;
 }
 
 int stringCompare(void* arg1, void* arg2){
