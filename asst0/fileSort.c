@@ -19,7 +19,19 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
-    
+    Node* a = malloc(sizeof(Node));
+    Node* b = malloc(sizeof(Node));
+    Node* c = malloc(sizeof(Node));
+    Node* d = malloc(sizeof(Node));
+    a->value = (void*)23;
+    b->value = (void*)12;
+    c->value = (void*)22;
+    d->value = (void*)1;
+    a->next = b;
+    b->next = c;
+    c->next = d;
+    d->next = NULL;
+    insertionSort(&a, *intCompare);
     return 0;
 }
 
@@ -47,6 +59,7 @@ int stringCompare(void* arg1, void* arg2){
         }
     }
 }
+
 int insertionSort(void* toSort, int (*comparator)(void*, void*)){
     Node* head = *((Node**) toSort);
     if(head == NULL)
@@ -63,7 +76,7 @@ int insertionSort(void* toSort, int (*comparator)(void*, void*)){
         else{
             Node* leading = head->next;
             Node* trailing = head;
-            while(leading != NULL && comparator((void*)list->value, (void*) leading->value) == -1){
+            while(leading != NULL && comparator((void*)list->value, (void*) leading->value) == 1){
                 leading = leading->next;
                 trailing = trailing->next;
             }
@@ -73,11 +86,49 @@ int insertionSort(void* toSort, int (*comparator)(void*, void*)){
             temp->next = leading;
         }
     }
-    Node** asd = (Node**) toSort;
-    *asd = head;
+    Node** root = (Node**) toSort;
+    *root = head;
     return 0;
 }
-int quickSort(void* toSort, int(*comparator)(void*, void*)){
 
+int quickSort(void* toSort, int(*comparator)(void*, void*)){
+    Node* head = *((Node**) toSort);
+    if(head == NULL)
+        return 0;
+    if(head->next == NULL)
+        return 0;
+    Node* list = head->next;
+    head->next = NULL;
+    Node* smaller = NULL;
+    Node* larger = NULL;
+    while(list != NULL){
+        if(comparator((void*)list->value, (void*) head->value) == -1){
+            Node* temp = list;
+            list = list->next;
+            temp->next = smaller;
+            smaller = temp;
+        }
+        else{
+            Node* temp = list;
+            list = list-> next;
+            temp->next = larger;
+            larger = temp;
+        }
+
+    }
+    quickSort((void*) &smaller, comparator);
+    quickSort((void*) &larger, comparator);
+    head->next = larger;
+    Node* temp = smaller;
+    if(temp != NULL){
+        while(temp->next != NULL)
+            temp = temp->next;
+        temp->next = head;
+    }
+    else{
+        smaller = head;
+    }
+    Node** root = (Node**) toSort;
+    *root = smaller;
     return 0;
 }
