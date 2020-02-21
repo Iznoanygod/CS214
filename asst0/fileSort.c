@@ -4,6 +4,7 @@
 #include "fileSort.h"
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 
 int main(int argc, char** argv){
     if(argc != 3){
@@ -21,7 +22,7 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
-    int fd = open(argv[2], O_RDONLY);
+    int fd = open(argv[2],O_NONBLOCK, O_RDONLY);
     if(fd == -1){
         printf("Fatal Error: file \"%s\" does not exist\n");
         return 0;
@@ -52,7 +53,18 @@ Node* readFile(int fd){
     char* word = malloc(1);
     int length = 0;
     word[0] = '\0';
-    while(read(fd, in, 1)){
+    int status = 1;
+    while(1){
+        status = read(fd, in, 1);
+        if(status == 0)
+            break;
+        if(status == -1){
+            printf("Fatal Error: Error number %d while reading file\n", errno);
+            free(in);
+            free(word);
+            freeList(list);
+            exit(0);
+        }
         if(in[0] == ','){
             Node* temp = malloc(sizeof(Node));
             temp->next = list;
