@@ -36,6 +36,8 @@ int main(int argc, char** argv){
         sortType ? insertionSort(&list, *stringCompare) : quickSort(&list, *stringCompare);
     }
     Node* temp = list;
+    if(temp == NULL)
+        printf("Warning: file is empty\,");
     while(temp != NULL){
         if(isInts)
             printf("%d\n", *((int*)temp->value));
