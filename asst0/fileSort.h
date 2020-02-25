@@ -22,6 +22,6 @@ void freeList(void* arg){
     }
 }
 int isDigit(char a){
-    return a > 47 && a < 58 ? 1 : 0;
+    return a == '-' || (a > 47 && a < 58 ? 1 : 0);
 }
 #endif

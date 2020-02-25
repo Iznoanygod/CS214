@@ -24,7 +24,7 @@ int main(int argc, char** argv){
     }
     int fd = open(argv[2],O_NONBLOCK, O_RDONLY);
     if(fd == -1){
-        printf("Fatal Error: file \"%s\" does not exist\n");
+        printf("Fatal Error: file \"%s\" does not exist\n", argv[1]);
         return 0;
     }
     Node* list = readFile(fd);
@@ -37,7 +37,7 @@ int main(int argc, char** argv){
     }
     Node* temp = list;
     if(temp == NULL)
-        printf("Warning: file is empty\,");
+        printf("Warning: file is empty\n");
     while(temp != NULL){
         if(isInts)
             printf("%d\n", *((int*)temp->value));
@@ -52,7 +52,7 @@ int main(int argc, char** argv){
 Node* readFile(int fd){
     Node* list = NULL;
     char* in = malloc(1);
-    char* word = malloc(1);
+    char* word = malloc(32);
     int length = 0;
     word[0] = '\0';
     int status = 1;
