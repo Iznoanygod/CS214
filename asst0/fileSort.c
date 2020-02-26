@@ -24,7 +24,7 @@ int main(int argc, char** argv){
     }
     int fd = open(argv[2],O_NONBLOCK, O_RDONLY);
     if(fd == -1){
-        printf("Fatal Error: file \"%s\" does not exist\n", argv[1]);
+        printf("Fatal Error: file \"%s\" does not exist\n", argv[2]);
         return 0;
     }
     Node* list = readFile(fd);
@@ -51,8 +51,10 @@ int main(int argc, char** argv){
 
 Node* readFile(int fd){
     Node* list = NULL;
-    char* in = malloc(1);
+    char* in = malloc(2);
+    in[1] = '\0';
     char* word = malloc(32);
+    int buffersize = 32;
     int length = 0;
     word[0] = '\0';
     int status = 1;
@@ -87,8 +89,15 @@ Node* readFile(int fd){
         else if(in[0] == ' ' || in[0] == '\n' || in[0] == '\t');
         else{
             isInts = isInts & isDigit(in[0]);
-            strncat(word, in, 1);
+            strcat(word, in);
             ++length;
+            if((length + 1) == buffersize){
+                char* repl = malloc(buffersize * 2);
+                memcpy(repl, word, buffersize);
+                buffersize = buffersize * 2;
+                free(word);
+                word = repl;
+            }
         }
     }
     if(word[0] != '\0'){
