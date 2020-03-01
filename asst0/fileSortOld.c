@@ -51,32 +51,25 @@ int main(int argc, char** argv){
 
 Node* readFile(int fd){
     Node* list = NULL;
+    char* in = malloc(2);
+    in[1] = '\0';
     char* word = malloc(32);
     int buffersize = 32;
     int length = 0;
     word[0] = '\0';
     int status = 1;
-    
-    int size = lseek(fd, 0, SEEK_END);
-    lseek(fd, 0, SEEK_SET);
-    char* input = malloc(size);
-    int readin = 0;
     while(1){
-        int status = read(fd,input + readin,size - readin);
+        status = read(fd, in, 1);
+        if(status == 0)
+            break;
         if(status == -1){
             printf("Fatal Error: Error number %d while reading file\n", errno);
-            free(input);
+            free(in);
             free(word);
             freeList(list);
             exit(0);
         }
-        readin += status;
-        if(readin == size)
-            break;
-    }
-    int i;
-    for(i = 0; i < size; i++){
-        if(input[i] == ','){
+        if(in[0] == ','){
             Node* temp = malloc(sizeof(Node));
             temp->next = list;
             if(isInts){
@@ -93,11 +86,10 @@ Node* readFile(int fd){
             word[0] = '\0';
             length = 0;
         }
-        
-        else if(input[i] == ' ' || input[i] == '\n' || input[i] == '\t');
+        else if(in[0] == ' ' || in[0] == '\n' || in[0] == '\t');
         else{
-            isInts = isInts & isDigit(input[i]);
-            strncat(word, input + i, 1);
+            isInts = isInts & isDigit(in[0]);
+            strcat(word, in);
             ++length;
             if((length + 1) == buffersize){
                 char* repl = malloc(buffersize * 2);
@@ -123,7 +115,7 @@ Node* readFile(int fd){
         }
         list = temp;
     }
-    free(input);
+    free(in);
     free(word);
     return list;
 }
