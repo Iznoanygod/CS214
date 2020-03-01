@@ -22,7 +22,7 @@ int main(int argc, char** argv){
         printf("Fatal Error: \"%s\" is not a valid sort flag\n", argv[1]);
         return 0;
     }
-    int fd = open(argv[2],O_NONBLOCK, O_RDONLY);
+    int fd = open(argv[2], O_RDONLY);
     if(fd == -1){
         printf("Fatal Error: file \"%s\" does not exist\n", argv[2]);
         return 0;
@@ -74,6 +74,7 @@ Node* readFile(int fd){
         if(readin == size)
             break;
     }
+    close(fd);
     int i;
     for(i = 0; i < size; i++){
         if(input[i] == ','){
@@ -94,7 +95,7 @@ Node* readFile(int fd){
             length = 0;
         }
         
-        else if(input[i] == ' ' || input[i] == '\n' || input[i] == '\t');
+        else if(input[i] == ' ' || input[i] == '\n' || input[i] == '\t'  || input[i] == '\r' || input[i] == '\v' || input[i] == '\a' || input[i] == '\b' || input[i] == '\f');
         else{
             isInts = isInts & isDigit(input[i]);
             strncat(word, input + i, 1);
