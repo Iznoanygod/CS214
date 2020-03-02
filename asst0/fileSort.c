@@ -53,7 +53,7 @@ Node* readFile(int fd){
     Node* list = NULL;
     char* word = malloc(32);
     if(word == NULL){
-        printf("Fatal Error: Failed to malloc\n");
+        printf("Fatal Error: Failed to allocate memory\n");
         close(fd);
         exit(0);
     }
@@ -66,7 +66,7 @@ Node* readFile(int fd){
     lseek(fd, 0, SEEK_SET);
     char* input = malloc(size);
     if(input == NULL){
-        printf("Fatal Error: Failed to malloc\n");
+        printf("Fatal Error: Failed to allocate memory\n");
         free(word);
         close(fd);
         exit(0);
@@ -91,7 +91,7 @@ Node* readFile(int fd){
         if(input[i] == ','){
             Node* temp = malloc(sizeof(Node));
             if(temp == NULL){
-                printf("Fatal Error: Failed to malloc\n");
+                printf("Fatal Error: Failed to allocate memory\n");
                 free(input);
                 free(word);
                 freeList(list);
@@ -102,7 +102,7 @@ Node* readFile(int fd){
             if(isInts){
                 int* integ = malloc(sizeof(int));
                 if(integ == NULL){
-                    printf("Fatal Error: Failed to malloc\n");
+                    printf("Fatal Error: Failed to allocate memory\n");
                     free(input);
                     free(word);
                     freeList(list);
@@ -113,6 +113,13 @@ Node* readFile(int fd){
             }
             else{
                 char* repl = malloc(length + 1);
+                if(repl = NULL){
+                    printf("Fatal Error: Failed to allocate memory\n");
+                    free(input);
+                    free(word);
+                    freeList(list);
+                    exit(0);
+                }
                 memcpy(repl, word, length+1);
                 temp->value = repl;
             }
