@@ -36,17 +36,24 @@ void grabWord(char* in, Node* ret)
 				char* temp = (char*) ret->value;
 				temp[sub_size-1] = '\0';
 				
-				// to lower case
-				int j;
-				for(j = 0; temp[j]; j++){
-					temp[j] = tolower(temp[j]);
-				}
+				lower_string(temp);
 				
 				ret->value = temp;
 				break;
 			}
 		}
 	}
+}
+
+void lower_string(char* s) {
+   int c = 0;
+   
+   while (s[c] != '\0') {
+      if (s[c] >= 'A' && s[c] <= 'Z') {
+         s[c] = s[c] + 32;
+      }
+      c++;
+   }
 }
 
 void writeStringFile(char *path, Node *head)
