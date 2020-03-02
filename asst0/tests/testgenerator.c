@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <ctype.h>
 
 #define BUFF_SIZE 64
 
@@ -34,6 +35,14 @@ void grabWord(char* in, Node* ret)
 				memcpy(ret->value, &in[last], (sub_size-1)*sizeof(char));
 				char* temp = (char*) ret->value;
 				temp[sub_size-1] = '\0';
+				
+				// to lower case
+				int j;
+				for (j = 0; j < sub_size-1; j++)
+				{
+					temp[j] = tolower(temp[j]);
+				}
+				
 				ret->value = temp;
 				break;
 			}
