@@ -52,6 +52,11 @@ int main(int argc, char** argv){
 Node* readFile(int fd){
     Node* list = NULL;
     char* word = malloc(32);
+    if(word == NULL){
+        printf("Fatal Error: Failed to malloc\n");
+        close(fd);
+        exit(0);
+    }
     int buffersize = 32;
     int length = 0;
     word[0] = '\0';
@@ -60,6 +65,12 @@ Node* readFile(int fd){
     int size = lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
     char* input = malloc(size);
+    if(input == NULL){
+        printf("Fatal Error: Failed to malloc\n");
+        free(word);
+        close(fd);
+        exit(0);
+    }
     int readin = 0;
     while(1){
         int status = read(fd,input + readin,size - readin);
@@ -79,9 +90,24 @@ Node* readFile(int fd){
     for(i = 0; i < size; i++){
         if(input[i] == ','){
             Node* temp = malloc(sizeof(Node));
+            if(temp == NULL){
+                printf("Fatal Error: Failed to malloc\n");
+                free(input);
+                free(word);
+                freeList(list);
+                close(fd);
+                exit(0);
+            }
             temp->next = list;
             if(isInts){
                 int* integ = malloc(sizeof(int));
+                if(integ == NULL){
+                    printf("Fatal Error: Failed to malloc\n");
+                    free(input);
+                    free(word);
+                    freeList(list);
+                    exit(0);
+                }
                 *integ = atoi(word);
                 temp->value = integ;
             }
