@@ -28,3 +28,5 @@ What We Were Testing For
 	5. General sorting accuracy
 	6. Data file with all same tokens
 	7. Data file with negative numbers
+	8. Non existent file
+	9. Invalid flags
