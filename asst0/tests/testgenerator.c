@@ -55,7 +55,7 @@ void writeStringFile(char *path, Node *head)
 	FILE *fp = fopen(path, "w+");
 	Node* curr = head;
 	
-	char* seps[] = {" ", "\n", "\t", "\a", "\b", "\e", "\f", "\r", "\v"};
+	char* seps[] = {" ", "\n", "\t", "\f", "\r", "\v"};
 	while (curr->next != NULL)
 	{
 		fprintf(fp, "%s%s,", seps[rand()%9], curr->value);
@@ -68,7 +68,7 @@ void writeIntFile(char *path, Node *head)
 	FILE *fp = fopen(path, "w+");
 	Node* curr = head;
 	
-	char* seps[] = {" ", "\n", "\t", "\a", "\b", "\e", "\f", "\r", "\v"};
+	char* seps[] = {" ", "\n", "\t", "\f", "\r", "\v"};
 	while (curr->next != NULL)
 	{
 		fprintf(fp, "%s%d,", seps[rand()%9], curr->value);
