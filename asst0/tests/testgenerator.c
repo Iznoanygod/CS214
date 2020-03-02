@@ -35,6 +35,7 @@ void grabWord(char* in, Node* ret)
 				memcpy(ret->value, &in[last], (sub_size-1)*sizeof(char));
 				char* temp = (char*) ret->value;
 				temp[sub_size-1] = '\0';
+				lower_string(temp);
 				ret->value = temp;
 				break;
 			}
@@ -42,15 +43,26 @@ void grabWord(char* in, Node* ret)
 	}
 }
 
+void lower_string(char* s) {
+   int c = 0;
+   
+   while (s[c] != '\0') {
+      if (s[c] >= 'A' && s[c] <= 'Z') {
+         s[c] = s[c] + 32;
+      }
+      c++;
+   }
+}
+
 void writeStringFile(char *path, Node *head)
 {
 	FILE *fp = fopen(path, "w+");
 	Node* curr = head;
 	
-	char* seps[] = {" ", "\n", "\t", "\a", "\b", "\e", "\f", "\r", "\v"};
+	char* seps[] = {" ", "\n", "\t", "\r", "\v"};
 	while (curr->next != NULL)
 	{
-		fprintf(fp, "%s%s,", seps[rand()%9], curr->value);
+		fprintf(fp, "%s%s,", seps[rand()%5], curr->value);
 		curr = curr->next;
 	}
 	fclose(fp);
@@ -60,10 +72,10 @@ void writeIntFile(char *path, Node *head)
 	FILE *fp = fopen(path, "w+");
 	Node* curr = head;
 	
-	char* seps[] = {" ", "\n", "\t", "\a", "\b", "\e", "\f", "\r", "\v"};
+	char* seps[] = {" ", "\n", "\t", "\r", "\v"};
 	while (curr->next != NULL)
 	{
-		fprintf(fp, "%s%d,", seps[rand()%9], curr->value);
+		fprintf(fp, "%s%d,", seps[rand()%5], curr->value);
 		curr = curr->next;
 	}
 	fclose(fp);
