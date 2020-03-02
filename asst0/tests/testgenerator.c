@@ -36,7 +36,7 @@ void grabWord(char* in, Node* ret)
 				char* temp = (char*) ret->value;
 				temp[sub_size-1] = '\0';
 				
-				lower_string(temp);
+				//lower_string(temp);
 				
 				ret->value = temp;
 				break;
