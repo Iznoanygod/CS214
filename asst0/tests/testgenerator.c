@@ -13,6 +13,18 @@ typedef struct Node{
     struct Node* next;
 }Node;
 
+
+void lower_string(char* s) {
+   int c = 0;
+   
+   while (s[c] != '\0') {
+      if (s[c] >= 'A' && s[c] <= 'Z') {
+         s[c] = s[c] + 32;
+      }
+      c++;
+   }
+}
+
 /**
 Grabs 1 word from a char buffer, "in", using \n as the delimiter, and place it in Node ret
 **/
@@ -43,16 +55,6 @@ void grabWord(char* in, Node* ret)
 	}
 }
 
-void lower_string(char* s) {
-   int c = 0;
-   
-   while (s[c] != '\0') {
-      if (s[c] >= 'A' && s[c] <= 'Z') {
-         s[c] = s[c] + 32;
-      }
-      c++;
-   }
-}
 
 void writeStringFile(char *path, Node *head)
 {
