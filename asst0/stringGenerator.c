@@ -1,9 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
 
 int main(int argc, char** argv){
     if(argc != 3){
@@ -13,7 +10,8 @@ int main(int argc, char** argv){
     char* file = argv[1];
     int size = atoi(argv[2]);
     
-    int fd = open(file,O_APPEND, O_CREAT, O_RDWR);
+    FILE* fd;
+    fd = fopen(file,"a+");
     char* buffer = malloc(size);
     int i;
     srand(time(0));
@@ -30,7 +28,7 @@ int main(int argc, char** argv){
 
     }
     
-    write(fd, buffer, size);
-    close(fd);
+    fwrite(buffer, 1, size, fd);
+    fclose(fd);
     return 0;
 }

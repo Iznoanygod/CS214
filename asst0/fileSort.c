@@ -113,7 +113,7 @@ Node* readFile(int fd){
             }
             else{
                 char* repl = malloc(length + 1);
-                if(repl = NULL){
+                if(repl == NULL){
                     printf("Fatal Error: Failed to allocate memory\n");
                     free(input);
                     free(word);
