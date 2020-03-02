@@ -1,0 +1,30 @@
+Test Plan
+
+testgenerator
+	- Utility to create test cases for integer and string data files
+	- For string files
+		- We take advantage of the dictionary file located at "/usr/share/dict/words".
+		- We read in BUFF_SIZE bytes starting at a random byte location in the file,
+		  parse out 1 word, store the word in a node in a linked list then repeat
+		  for the desired number of tokens.
+		- We then write the linked list to a comma separated file and mix in some
+		  escape characters such as "\n" or "\t".
+	- For integer files
+		- We generate a random number and store it in a node in a linked list.
+		- Repeat for the desired number of tokens.
+		- We then write the linked list to a comma separated file and mix in some
+		  escape characters such as "\n" or "\t".
+
+Testing Process
+	1. Generate a test file
+	2. Test fileSort on the generated test file
+	3. Verify results
+
+What We Were Testing For
+	1. Escape characters
+	2. Empty tokens
+	3. Very large data file size
+	4. Empty data file
+	5. General sorting accuracy
+	6. Data file with all same tokens
+	7. Data file with negative numbers
