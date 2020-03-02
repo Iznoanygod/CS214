@@ -38,8 +38,7 @@ void grabWord(char* in, Node* ret)
 				
 				// to lower case
 				int j;
-				for (j = 0; j < sub_size-1; j++)
-				{
+				for(j = 0; temp[j]; j++){
 					temp[j] = tolower(temp[j]);
 				}
 				
