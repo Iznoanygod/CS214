@@ -1,0 +1,4 @@
+0	word
+10	other
+110	another
+111	hmm
