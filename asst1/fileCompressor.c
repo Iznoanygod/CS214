@@ -8,11 +8,16 @@
 
 int main(int argc, char** argv){
     printf("%d\n", sizeof(Node));
-    int fd = open("exampleDict.txt", O_RDWR | O_CREAT, S_IRWXU);
-    Node* tree = tokenizeDict(fd);
+    int dfd = open("exampleDict.txt", O_RDWR | O_CREAT, S_IRWXU);
+    int ofd = open("exampleCompress.txt", O_RDWR | O_CREAT, S_IRWXU);
+    int nfd = open("decompress.txt", O_RDWR | O_CREAT, S_IRWXU);
+    Node* tree = tokenizeDict(dfd);
+    decompressFile(tree, ofd, nfd);
     freeTree(tree);
     return 0;
 }
+
+
 
 /*
  * tokenizeDict
@@ -117,6 +122,75 @@ Node* tokenizeDict(int fd){
     free(line);
     free(input);
     return tree;
+}
+
+ /*
+  * decompressFile
+  * Takes 3 arguments, pointer to root of huffman tree, 
+  * file descriptor for .hcz file, file descriptor for new file
+  */
+
+void decompressFile(Node* tree, int ofd, int nfd){
+    int buffersize = 32;
+    int length = 0;
+
+    int size = lseek(ofd, 0, SEEK_END);
+    lseek(ofd, 0, SEEK_SET);
+    char* input = malloc(size);
+    if(input == NULL){
+        printf("Fatal Error: Failed to allocate memory\n");
+        close(ofd);
+        close(nfd);
+        exit(0);
+    }
+    int readin = 0;
+    while(1){
+        int status = read(ofd, input + readin, size - readin);
+        if(status == -1){
+            printf("Fatal ErrorL Error number %d while reading file\n", errno);
+            free(input);
+            exit(0);
+        }
+        readin += status;
+        if(readin == size)
+            break;
+    }
+    close(ofd);
+
+    Node* temp = tree;
+    int i;
+    for(i = 0; i < size; i++){
+        if(input[i] == '0')
+            temp = temp->left;
+        else
+            temp = temp->right;
+        if(temp->left == NULL){
+            //output value to the file
+            char* text = temp->value;
+            if(!strcmp(text, "\\n"))
+                write(nfd, "\n", 1);
+            else if(!strcmp(text, "\\t"))
+                write(nfd, "\t", 1);
+            else if(!strcmp(text, "\\s"))
+                write(nfd, " ", 1);
+            else
+                write(nfd, temp->value, strlen(temp->value));
+            temp = tree;
+        }
+    }
+
+    free(input);
+    return;
+}
+
+ /*
+  * createDictionary
+  * Takes 3 arguments, node in the tree, file descriptor for the dictionary,
+  * and the local path of the node
+  */
+
+void createDictionary(Node* tree, int fd, char* path){
+    
 }
 
 void freeTree(void* root){
