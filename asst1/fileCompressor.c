@@ -125,6 +125,50 @@ Node* tokenizeDict(int fd){
 }
 
  /*
+  * stringToken
+  * Takes a string as the only argument
+  * converts it into the proper string representation for
+  * codebook
+  */
+
+char* stringToken(char* token){
+    char* ret = malloc(1+strlen(token));
+    int i;
+    int j = 0;
+    for(i = 0; i < strlen(token); i++){
+        if(token[i] == '\\'){
+            ++i;
+            switch(token[i]){
+                case 0x5c:
+                    ret[j] = '\\';
+                    ++j;
+                    break;
+                case 0x6e:
+                    ret[j] = '\n';
+                    ++j;
+                    break;
+                case 0x73:
+                    ret[j] = ' ';
+                    ++j;
+                    break;
+                case 0x74:
+                    ret[j] = '\t';
+                    ++j;
+                    break;
+                default:
+                    break;
+            }
+        }
+        else{
+            ret[j] = token[i];
+            ++j;
+        }
+    }
+    ret[j] = '\0';
+    return ret;
+}
+
+ /*
   * decompressFile
   * Takes 3 arguments, pointer to root of huffman tree, 
   * file descriptor for .hcz file, file descriptor for new file
@@ -166,15 +210,9 @@ void decompressFile(Node* tree, int ofd, int nfd){
             temp = temp->right;
         if(temp->left == NULL){
             //output value to the file
-            char* text = temp->value;
-            if(!strcmp(text, "\\n"))
-                write(nfd, "\n", 1);
-            else if(!strcmp(text, "\\t"))
-                write(nfd, "\t", 1);
-            else if(!strcmp(text, "\\s"))
-                write(nfd, " ", 1);
-            else
-                write(nfd, temp->value, strlen(temp->value));
+            char* text = stringToken(temp->value);
+            write(nfd, text, strlen(text));
+            free(text);
             temp = tree;
         }
     }
