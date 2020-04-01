@@ -19,8 +19,6 @@ int main(int argc, char** argv){
     return 0;
 }
 
-
-
 /*
  * tokenizeDict
  * Returns pointer to huffman tree
@@ -186,16 +184,12 @@ void decompressFile(Node* tree, int ofd, int nfd){
 }
 
  /*
-  * createDictionary
-  * Takes 3 arguments, node in the tree, file descriptor for the dictionary,
+  * recurseCreate
+  * Used as helper function for createDictionary, takes 3 arguments,
+  * node in the tree, file descriptor for the dictionary,
   * and the local path of the node
   */
 
-void createDictionary(Node* tree, int fd){
-    recurseCreate(tree->left, fd, "0");
-    recurseCreate(tree->right, fd, "1");
-    close(fd);
-}
 void recurseCreate(Node* tree, int fd, char* path){
     if(tree->left == NULL){
         write(fd, path, strlen(path));
@@ -214,6 +208,18 @@ void recurseCreate(Node* tree, int fd, char* path){
         recurseCreate(tree->left, fd, left);
         recurseCreate(tree->right, fd, right);
     }
+}
+
+ /*
+  * createDictionary
+  * Takes 3 arguments, node in the tree, file descriptor for the dictionary,
+  * and the local path of the node
+  */
+
+void createDictionary(Node* tree, int fd){
+    recurseCreate(tree->left, fd, "0");
+    recurseCreate(tree->right, fd, "1");
+    close(fd);
 }
 
 void freeTree(void* root){
