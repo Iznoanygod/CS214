@@ -11,8 +11,10 @@ int main(int argc, char** argv){
     int dfd = open("exampleDict.txt", O_RDWR | O_CREAT, S_IRWXU);
     int ofd = open("exampleCompress.txt", O_RDWR | O_CREAT, S_IRWXU);
     int nfd = open("decompress.txt", O_RDWR | O_CREAT, S_IRWXU);
+    int ndfd = open("newDict.txt", O_RDWR | O_CREAT, S_IRWXU);
     Node* tree = tokenizeDict(dfd);
     decompressFile(tree, ofd, nfd);
+    createDictionary(tree, ndfd);
     freeTree(tree);
     return 0;
 }
@@ -189,8 +191,29 @@ void decompressFile(Node* tree, int ofd, int nfd){
   * and the local path of the node
   */
 
-void createDictionary(Node* tree, int fd, char* path){
-    
+void createDictionary(Node* tree, int fd){
+    recurseCreate(tree->left, fd, "0");
+    recurseCreate(tree->right, fd, "1");
+    close(fd);
+}
+void recurseCreate(Node* tree, int fd, char* path){
+    if(tree->left == NULL){
+        write(fd, path, strlen(path));
+        write(fd, "\t", 1);
+        write(fd, tree->value, strlen(tree->value));
+        write(fd, "\n", 1);
+        return;
+    }
+    else{
+        char left[256];
+        strcpy(left, path);
+        strcat(left, "0");
+        char right[256];
+        strcpy(right, path);
+        strcat(right, "1");
+        recurseCreate(tree->left, fd, left);
+        recurseCreate(tree->right, fd, right);
+    }
 }
 
 void freeTree(void* root){
