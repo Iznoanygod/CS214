@@ -260,6 +260,12 @@ void createDictionary(Node* tree, int fd){
     close(fd);
 }
 
+/*
+ * freeTree
+ * takes the root of the tree as the only paramter
+ * will free all memory allocations in the tree
+ */
+
 void freeTree(void* root){
     Node* tree = (Node*) root;
     if(tree == NULL)
