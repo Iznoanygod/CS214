@@ -7,6 +7,7 @@ typedef struct Node{
     struct Node* right;
 }Node;
 Node* tokenizeDict(int fd);
+void readFile(int fd, Node*** arr, int size);
 char* stringToken(char* token);
 void decompressFile(Node* tree, int ofd, int nfd);
 void createDictionary(Node* tree, int fd);

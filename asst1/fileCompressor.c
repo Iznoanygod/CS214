@@ -6,7 +6,39 @@
 #include <fcntl.h>
 #include <errno.h>
 
+int recursive;
+
+/*
+ * mode
+ * 0 - build codebook
+ * 1 - compress
+ * 2 - decompress
+ */
+
+int mode;
+
+
 int main(int argc, char** argv){
+    recursive = !strcmp("-R", argv[1]) ? 1 : 0;
+    char* modeFlag = argv[1+recursive];
+    if(!strcmp("-R", modeFlag)){
+        printf("Fatal Error: Order of flags incorrect. Recursive flag must be first\n");
+        return 0;
+    }
+    if(!strcmp("-b", modeFlag)){
+        mode = 0;
+    }
+    else if(!strcmp("-c", modeFlag)){
+        mode = 1;
+    }
+    else if(!strcmp("-d", modeFlag)){
+        mode = 2;
+    }
+    else{
+        printf("Fatal Error: Invalid flag\n");
+        return 0;
+    }
+    
     printf("%d\n", sizeof(Node));
     int dfd = open("exampleDict.txt", O_RDWR | O_CREAT, S_IRWXU);
     int ofd = open("exampleCompress.txt", O_RDWR | O_CREAT, S_IRWXU);
@@ -17,6 +49,17 @@ int main(int argc, char** argv){
     createDictionary(tree, ndfd);
     freeTree(tree);
     return 0;
+}
+
+/*
+ * readFile
+ * takes 3 arguments, file descriptor, node array, and size of array
+ * returns new size of the array
+ */
+
+int readFile(int fd, Node*** arr, int size){
+    Node** array = *arr;
+    
 }
 
 /*
