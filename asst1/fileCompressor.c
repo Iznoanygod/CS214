@@ -17,8 +17,13 @@ int recursive;
 
 int mode;
 
+int codebook;
 
 int main(int argc, char** argv){
+    if(argc < 3){
+        printf("Fatal Error: Not enough flags\n");
+        return 0;
+    }
     recursive = !strcmp("-R", argv[1]) ? 1 : 0;
     char* modeFlag = argv[1+recursive];
     if(!strcmp("-R", modeFlag)){
@@ -38,17 +43,113 @@ int main(int argc, char** argv){
         printf("Fatal Error: Invalid flag\n");
         return 0;
     }
+    if(argc > 4+recursive){
+        printf("Fatal Error: Too many flags\n");
+        return 0;
+    }
+    char* desc = argv[2+recursive];
+    int codebookFD;
+    if(argc == 4+recursive){
+        codebook = 1;
+        char* cbdesc = argv[3+recursive];
+        codebookFD = mode != 0 ? open(cbdesc, O_RDWR) : open(cbdesc, O_RDWR | O_CREAT, S_IRWXU);
+        if(codebookFD == -1){
+            switch(errno){
+                case ENOENT:
+                    printf("Fatal Error: Specified codebook does not exist\n");
+                    break;
+                case EISDIR:
+                    printf("Fatal Error: File path given for codebook is a directory\n");
+                    break;
+                default:
+                    printf("Fatal Error: Unspecified error occured while opening codebook\n");
+                    break;
+            }
+
+            return 0;
+        }
+        
+    }
+    else{
+        if(mode){
+            printf("Fatal Error: No codebook specified\n");
+            return 0;
+        }
+        else{
+            printf("Warning: No codebook specified, will use default codebook\n");
+            codebookFD = open("HuffmanCodebook", O_RDWR | O_CREAT, S_IRWXU);
+        }
+    }
+    //compress or decompress
+    if(mode){
+        
+    }
+    //building codebook
+    else{
+        Node** arr = NULL;
+        int size = 0;
+        if(recursive){
+            //recursively read files and build codebook
+            int dd = opendir(desc);
+            if(dd == -1){
+                switch(errno){
+                    case EACCES:
+                        printf("Fatal Error: Permission Denied\n");
+                        close(codebookFD);
+                        return 0;
+                    case ENOENT:
+                        printf("Fatal Error: Directory does not exist\n");
+                        close(codebookFD);
+                        return 0;
+                    case ENOTDIR:
+                        printf("Fatal Error: Path is not a directory\n");
+                        close(codebookFD);
+                        return 0;
+                    default:
+                        printf("Fatal Error: Unspecified error\n");
+                        close(codebookFD);
+                        return 0;
+                }
+            }
+            
+            
+        }
+        else{
+            //has 1 file
+            int fd = open(desc, O_RDWR);
+            if(fd == -1){
+                switch(errno){
+                    case ENOENT:
+                        printf("Fatal Error: Specified file does not exist\n");
+                        close(codebookFD);
+                        return 0;
+                    case EISDIR:
+                        printf("Fatal Error: File path given is a directory\n");
+                        close(codebookFD);
+                        return 0;
+                    default:
+                        printf("Fatal Error: Unspecified error occured while opening file\n");
+                        close(codebookFD);
+                        return 0;
+                }
+            } 
+            size = readFile(fd, &arr, 0);
+        }
+        Node* tree = createTree(arr, size);
+        createDictionary(tree, codebookFD);
+        free(arr);
+        freeTree(tree);
+    }
     
-    printf("%d\n", sizeof(Node));
-    int dfd = open("exampleDict.txt", O_RDWR | O_CREAT, S_IRWXU);
-    int ofd = open("exampleCompress.txt", O_RDWR | O_CREAT, S_IRWXU);
-    int nfd = open("decompress.txt", O_RDWR | O_CREAT, S_IRWXU);
-    int ndfd = open("newDict.txt", O_RDWR | O_CREAT, S_IRWXU);
-    Node* tree = tokenizeDict(dfd);
-    decompressFile(tree, ofd, nfd);
-    createDictionary(tree, ndfd);
-    freeTree(tree);
     return 0;
+}
+
+/*
+ * createTree
+ * will create full huffmann tree out of array
+ */
+
+Node* createTree(Node** arr, int size){
 }
 
 /*
@@ -59,7 +160,87 @@ int main(int argc, char** argv){
 
 int readFile(int fd, Node*** arr, int size){
     Node** array = *arr;
-    
+    int fsize = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET);
+    char* input = malloc(fsize);
+    int readin = 0;
+    while(1){
+        int status = read(fd, input + readin, fsize-readin);
+        if(status == -1){
+            printf("Fatal Error: Error while reading file\n");
+            free(input);
+            return -1;
+        }
+        readin += status;
+        if(readin == fsize)
+            break;
+    }
+    close(fd);
+    char* string = malloc(fsize);
+    string[0] = '\0';
+    int i;
+    for(i = 0; i < fsize; i++){
+        char* token = malloc(fsize);
+        token[0] = '\0';
+        if(input[i] == '\n' || input[i] == ' ' || input[i] == '\t'){
+            sscanf(string, "%s", token);
+            int j;
+            int check = 0;
+            for(j = 0; j < size; j++){
+                if(!strcmp(token, array[j]->value)){
+                    check = 1;
+                    array[j]->frequency++;
+                }
+            }
+            if(!check && strcmp(token, "")){
+                Node* temp = malloc(sizeof(Node));
+                temp->left = NULL;
+                temp->right = NULL;
+                temp->frequency = 1;
+                temp->value = malloc(strlen(token) + 1);
+                strcpy(temp->value, token);
+                Node** tarr = malloc(sizeof(Node) * (size+ 1));
+                memcpy(tarr, array, sizeof(Node) * size);
+                free(array);
+                tarr[size] = temp;
+                array = tarr;
+                size++;
+            }
+            
+            //insert white space
+            check = 0;
+            for(j = 0; j < size; ++j){
+                if(!strncmp(input + i, array[j]->value,1)){
+                    check = 1;
+                    array[j]->frequency++;
+                }
+            }
+            if(!check){
+                Node* temp = malloc(sizeof(Node));
+                temp->left = NULL;
+                temp->right = NULL;
+                temp->frequency = 1;
+                temp->value = malloc(2);
+                temp->value[0] = input[i];
+                temp->value[1] = '\0';
+                Node** tarr = malloc(sizeof(Node) * (size+1));
+                memcpy(tarr, array, sizeof(Node) * size);
+                free(array);
+                tarr[size] = temp;
+                array = tarr;
+                size++;
+            }
+            string[0] = '\0';
+        }
+        else{
+            strncat(string, input + i, 1);
+        }
+        free(token);
+    }
+    *arr = array;
+    free(input);
+    free(string);
+    return size;
 }
 
 /*
@@ -234,7 +415,7 @@ void decompressFile(Node* tree, int ofd, int nfd){
     while(1){
         int status = read(ofd, input + readin, size - readin);
         if(status == -1){
-            printf("Fatal ErrorL Error number %d while reading file\n", errno);
+            printf("Fatal Error: Error number %d while reading file\n", errno);
             free(input);
             exit(0);
         }
