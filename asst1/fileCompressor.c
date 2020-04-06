@@ -156,16 +156,25 @@ int main(int argc, char** argv){
                 strcat(newpath, ".hcz");
                 int ofd = temp->fd;
                 int nfd = open(newpath, O_RDWR | O_CREAT, S_IRWXU);
-                compressFile(codeList, ofd, nfd);
+                if(compressFile(codeList, ofd, nfd)){
+                    close(ofd);
+                    while(temp != NULL){
+                        File* freeing = temp;
+                        temp = temp->next;
+                        close(freeing->fd);
+                        free(freeing->path);
+                        free(freeing);
+                    }
+                    free(newpath);    
+                    free(line);
+                    return 0;
+                }
+                File* freeing = temp;
                 free(newpath);
                 temp = temp->next;
-            }
-            temp = files;
-            while(temp != NULL){
-                File *trail = temp;
-                temp = temp->next;
-                free(trail->path);
-                free(trail);
+                close(freeing->fd);
+                free(freeing->path);
+                free(freeing);
             }
         }
         else{
@@ -174,7 +183,12 @@ int main(int argc, char** argv){
             strcat(newpath, ".hcz");
             int ofd = open(desc, O_RDWR);
             int nfd = open(newpath, O_RDWR | O_CREAT, S_IRWXU);
-            compressFile(codeList, ofd, nfd);
+            if(compressFile(codeList, ofd, nfd)){
+                close(ofd);
+                free(newpath);
+                free(line);
+                return 0;
+            }
             free(newpath);
         }
         while(codeList != NULL){
@@ -206,16 +220,23 @@ int main(int argc, char** argv){
                 strncpy(newpath, temp->path, strlen(temp->path)-4);
                 newpath[strlen(temp->path) - 4] = '\0';
                 int nfd = open(newpath, O_RDWR | O_CREAT, S_IRWXU);
-                decompressFile(tree, temp->fd, nfd);
+                if(decompressFile(tree, temp->fd, nfd)){
+                    while(temp != NULL){
+                        File* freeing = temp;
+                        temp = temp->next;
+                        close(freeing->fd);
+                        free(freeing->path);
+                        free(freeing);
+                    }
+                    free(newpath);
+                    return 0;
+                }
+                File* freeing = temp;
                 temp = temp->next;
+                close(freeing->fd);
+                free(freeing->path);
+                free(freeing);
                 free(newpath);
-            }
-            temp = files;
-            while(temp != NULL){
-                File *trail = temp;
-                temp = temp->next;
-                free(trail->path);
-                free(trail);
             }
             freeTree(tree);
         }
@@ -231,7 +252,9 @@ int main(int argc, char** argv){
             newpath[strlen(desc) - 4] = '\0';
             int ofd = open(desc, O_RDWR);
             int nfd = open(newpath, O_RDWR | O_CREAT, S_IRWXU);
-            decompressFile(tree, ofd, nfd);
+            if(decompressFile(tree, ofd, nfd)){
+                return 0;
+            }
             freeTree(tree);
             free(newpath);
         }
@@ -588,7 +611,7 @@ char* tokenString(char* string){
   * file descriptor for .hcz file, file descriptor for new file
   */
 
-void decompressFile(Node* tree, int ofd, int nfd){
+int decompressFile(Node* tree, int ofd, int nfd){
     int buffersize = 32;
     int length = 0;
 
@@ -597,9 +620,8 @@ void decompressFile(Node* tree, int ofd, int nfd){
     char* input = malloc(size);
     if(input == NULL){
         printf("Fatal Error: Failed to allocate memory\n");
-        close(ofd);
         close(nfd);
-        exit(0);
+        return 1;
     }
     int readin = 0;
     while(1){
@@ -607,13 +629,12 @@ void decompressFile(Node* tree, int ofd, int nfd){
         if(status == -1){
             printf("Fatal Error: Error number %d while reading file\n", errno);
             free(input);
-            exit(0);
+            return 1;
         }
         readin += status;
         if(readin == size)
             break;
     }
-    close(ofd);
 
     Node* temp = tree;
     int i;
@@ -630,9 +651,9 @@ void decompressFile(Node* tree, int ofd, int nfd){
             temp = tree;
         }
     }
-
+    close(nfd);
     free(input);
-    return;
+    return 0;
 }
 
 /* 
@@ -640,12 +661,11 @@ void decompressFile(Node* tree, int ofd, int nfd){
  * Takes 3 arguments, the dictionary file, the old fild descriptor, and new file descriptor
  */
 
-void compressFile(cbLL* codes, int ofd, int nfd){
+int compressFile(cbLL* codes, int ofd, int nfd){
     char* line = malloc(32);
     if(line == NULL){
         printf("Fatal Error: Failed to allocate memory\n");
-        close(ofd);
-        exit(0);
+        return 1;
     }
     int buffersize = 32;
     int length = 0;
@@ -657,8 +677,7 @@ void compressFile(cbLL* codes, int ofd, int nfd){
     if(input == NULL){
         printf("Fatal Error: Failed to allocate memory\n");
         free(line);
-        close(ofd);
-        exit(0);
+        return 1;
     }
     int readin = 0;
     while(1){
@@ -667,13 +686,12 @@ void compressFile(cbLL* codes, int ofd, int nfd){
             printf("Fatal Error: Error number %d while reading file\n", errno);
             free(input);
             free(line);
-            exit(0);
+            return 1;
         }
         readin += status;
         if(readin == size)
             break;
     }
-    close(ofd);
 
     int i;
     for(i = 0; i < size; i++){
@@ -688,12 +706,12 @@ void compressFile(cbLL* codes, int ofd, int nfd){
                     while(temp != NULL){
                         cbLL* asd = temp;
                         temp = temp->next;
-                        free(temp->code);
-                        free(temp->token);
-                        free(temp);
+                        free(asd->code);
+                        free(asd->token);
+                        free(asd);
                     }
                     close(nfd);
-                    exit(0);
+                    return 1;
                 }
                 if(!strcmp(temp->token, line)){
                     write(nfd, temp->code, strlen(temp->code));
@@ -711,12 +729,12 @@ void compressFile(cbLL* codes, int ofd, int nfd){
                     while(temp != NULL){
                         cbLL* asd = temp;
                         temp = temp->next;
-                        free(temp->code);
-                        free(temp->token);
-                        free(temp);
+                        free(asd->code);
+                        free(asd->token);
+                        free(asd);
                     }
                     close(nfd);
-                    exit(0);
+                    return 1;
                 }
                 char* tokened = stringToken(temp->token);
                 if(!strncmp(input + i,tokened,1)){
@@ -746,6 +764,7 @@ void compressFile(cbLL* codes, int ofd, int nfd){
     free(line);
     write(nfd, "\n", 1);
     close(nfd);
+    return 0;
 }
 
  /*

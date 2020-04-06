@@ -19,8 +19,8 @@ typedef struct cbLL{
 Node* tokenizeDict(int fd);
 int readFile(int fd, Node*** arr, int size);
 char* stringToken(char* token);
-void decompressFile(Node* tree, int ofd, int nfd);
-void compressFile(cbLL* codes, int ofd, int nfd);
+int decompressFile(Node* tree, int ofd, int nfd);
+int compressFile(cbLL* codes, int ofd, int nfd);
 void createDictionary(Node* tree, int fd);
 File* recurseFiles(char* path);
 void freeTree(void* root);

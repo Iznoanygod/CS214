@@ -4,5 +4,6 @@ all:
 rtest:
 	rm ctest/*.hcz
 	rm dtest/*.txt
+	rm HuffmanCodebook
 clean:
 	rm fileCompressor
