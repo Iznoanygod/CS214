@@ -419,7 +419,7 @@ Node* tokenizeDict(int fd){
  /*
   * stringToken
   * Takes a string as the only argument
-  * converts it into the proper string representation for
+  * converts it into the proper string representation from
   * codebook
   */
 
@@ -457,6 +457,33 @@ char* stringToken(char* token){
         }
     }
     ret[j] = '\0';
+    return ret;
+}
+
+/*
+ * tokenString
+ * does the opposite of stringToken
+ * takes string and turns it into tokenized string
+ */
+
+char* tokenString(char* string){
+    char* ret = malloc(strlen(string) + 2);
+    ret[2] = '\0';
+    if(!strcmp(string, "\n")){
+        ret[1] = 'n';
+        ret[0] = escapechar;
+    }
+    else if(!strcmp(string, "\t")){
+        ret[1] = 't';
+        ret[0] = escapechar;
+    }
+    else if(!strcmp(string, " ")){
+        ret[1] = 's';
+        ret[0] = escapechar;
+    }
+    else{
+        strcpy(ret, string);
+    }
     return ret;
 }
 
@@ -533,7 +560,9 @@ void recurseCreate(Node* tree, int fd, char* path){
     if(tree->left == NULL){
         write(fd, path, strlen(path));
         write(fd, "\t", 1);
-        write(fd, tree->value, strlen(tree->value));
+        char* print = tokenString(tree->value);
+        write(fd, print, strlen(print));
+        free(print);
         write(fd, "\n", 1);
         return;
     }
@@ -607,6 +636,7 @@ File* recurseFiles(char* path){
   */
 
 void createDictionary(Node* tree, int fd){
+    escapechar = '\\';
     write(fd, "\\\n", 2);
     recurseCreate(tree->left, fd, "0");
     recurseCreate(tree->right, fd, "1");
