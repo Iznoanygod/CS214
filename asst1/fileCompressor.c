@@ -82,13 +82,14 @@ int main(int argc, char** argv){
             codebookFD = open("HuffmanCodebook", O_RDWR | O_CREAT, S_IRWXU);
         }
     }
-    //compress or decompress
+    //compress
     if(mode == 1){
         if(recursive){
 
 
         }
     }
+    //decompress
     else if(mode == 2){
        if(recursive){
             File* files = recurseFiles(desc);
