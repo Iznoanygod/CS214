@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <dirent.h>
+#include "heapSort.h"
 
 int recursive;
 
@@ -198,7 +199,19 @@ int main(int argc, char** argv){
  */
 
 Node* createTree(Node** arr, int size){
-    
+    int spot;
+    for(spot = 0; spot < size - 1; spot++){
+        heapSort(arr + spot, size - spot);
+        Node* temp = malloc(sizeof(Node));
+        temp->value = malloc(1);
+        temp->value[0] = '\0';
+        temp->frequency = arr[spot]->frequency + arr[spot+1]->frequency;
+        temp->left = arr[spot];
+        temp->right = arr[spot+1];
+        arr[spot+1] = temp;
+    }
+    Node* tree = arr[size - 1];
+    return tree;
 }
 
 /*

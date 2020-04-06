@@ -20,4 +20,5 @@ void createDictionary(Node* tree, int fd);
 File* recurseFiles(char* path);
 void freeTree(void* root);
 Node* createTree(Node** arr, int size);
+void sortArray(Node*** arr, int size);
 #endif
