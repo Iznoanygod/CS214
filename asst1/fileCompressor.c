@@ -85,10 +85,106 @@ int main(int argc, char** argv){
     }
     //compress
     if(mode == 1){
-        if(recursive){
-
-
+        cbLL* codeList = NULL;
+        int buffersize = 32;
+        char* line = malloc(32);
+        line[0] = '\0';
+        int length = 32;
+        int size = lseek(codebookFD, 0, SEEK_END);
+        lseek(codebookFD, 0, SEEK_SET);
+        char* input = malloc(size);
+        int readin = 0;
+        while(1){
+            int status = read(codebookFD, input + readin, size - readin);
+            if(status == -1){
+                printf("Fatal Error: Error while reading codebook\n");
+                free(input);
+                close(codebookFD);
+                exit(0);
+            }
+            readin += status;
+            if(readin == size)
+                break;
         }
+        close(codebookFD);
+        escapechar = input[0];
+        int i;
+        cbLL* trail = NULL;
+        for(i = 2; i < size; i++){
+            if(input[i] == '\n'){
+                char* code = malloc(buffersize);
+                char* string = malloc(buffersize);
+                sscanf(line, "%s\t%s", code, string);
+                cbLL* temp = malloc(sizeof(cbLL));
+                temp->code = code;
+                temp->token = string;
+                temp->next = NULL;
+                if(codeList == NULL){
+                    codeList = temp;
+                    trail = codeList;
+                }
+                else{
+                    trail->next = temp;
+                    trail = temp;
+                }
+                length = 0;
+                line[0] = '\0';
+            }
+            else{
+                strncat(line, input + i, 1);
+                ++length;
+                if((length+1) == buffersize){
+                    char* repl = malloc(buffersize * 2);
+                    memcpy(repl, line, buffersize);
+                    buffersize = buffersize * 2;
+                    free(line);
+                    line = repl;
+                }
+            }
+        }
+        free(input);
+        if(recursive){
+            File* files = recurseFiles(desc);
+            if(files == NULL){
+                printf("Warning: Directory is empty\n");
+            }
+            File* temp = files;
+            while(temp != NULL){
+                char* newpath = malloc(strlen(temp->path) + 5);
+                strncpy(newpath, temp->path, strlen(temp->path));
+                newpath[strlen(temp->path)] = '\0';
+                strcat(newpath, ".hcz");
+                int ofd = temp->fd;
+                int nfd = open(newpath, O_RDWR | O_CREAT, S_IRWXU);
+                compressFile(codeList, ofd, nfd);
+                free(newpath);
+                temp = temp->next;
+            }
+            temp = files;
+            while(temp != NULL){
+                File *trail = temp;
+                temp = temp->next;
+                free(trail->path);
+                free(trail);
+            }
+        }
+        else{
+            char* newpath = malloc(strlen(desc) + 5);
+            strcpy(newpath, desc);
+            strcat(newpath, ".hcz");
+            int ofd = open(desc, O_RDWR);
+            int nfd = open(newpath, O_RDWR | O_CREAT, S_IRWXU);
+            compressFile(codeList, ofd, nfd);
+            free(newpath);
+        }
+        while(codeList != NULL){
+            cbLL* temp = codeList;
+            codeList = codeList->next;
+            free(temp->code);
+            free(temp->token);
+            free(temp);
+        }
+        free(line);
     }
     //decompress
     else if(mode == 2){
@@ -160,7 +256,6 @@ int main(int argc, char** argv){
                 free(trail->path);
                 free(trail);
             }
-            free(files);
 
         }
         else{
@@ -206,8 +301,8 @@ Node* createTree(Node** arr, int size){
         temp->value = malloc(1);
         temp->value[0] = '\0';
         temp->frequency = arr[spot]->frequency + arr[spot+1]->frequency;
-        temp->left = arr[spot];
-        temp->right = arr[spot+1];
+        temp->right = arr[spot];
+        temp->left = arr[spot+1];
         arr[spot+1] = temp;
     }
     Node* tree = arr[size - 1];
@@ -545,8 +640,112 @@ void decompressFile(Node* tree, int ofd, int nfd){
  * Takes 3 arguments, the dictionary file, the old fild descriptor, and new file descriptor
  */
 
-void compressFile(int cbfd, int ofd, int nfd){
-    
+void compressFile(cbLL* codes, int ofd, int nfd){
+    char* line = malloc(32);
+    if(line == NULL){
+        printf("Fatal Error: Failed to allocate memory\n");
+        close(ofd);
+        exit(0);
+    }
+    int buffersize = 32;
+    int length = 0;
+    line[0] = '\0';
+
+    int size = lseek(ofd, 0, SEEK_END);
+    lseek(ofd, 0, SEEK_SET);
+    char* input = malloc(size);
+    if(input == NULL){
+        printf("Fatal Error: Failed to allocate memory\n");
+        free(line);
+        close(ofd);
+        exit(0);
+    }
+    int readin = 0;
+    while(1){
+        int status = read(ofd, input + readin, size-readin);
+        if(status == -1){
+            printf("Fatal Error: Error number %d while reading file\n", errno);
+            free(input);
+            free(line);
+            exit(0);
+        }
+        readin += status;
+        if(readin == size)
+            break;
+    }
+    close(ofd);
+
+    int i;
+    for(i = 0; i < size; i++){
+        if(input[i] == '\n' || input[i] == '\t' || input[i] == ' '){
+            cbLL* temp = codes;
+            while(1){
+                if(temp == NULL){
+                    printf("Fatal Error: Error while compressing file, string not in codebook\n");
+                    free(line);
+                    free(input);
+                    temp = codes;
+                    while(temp != NULL){
+                        cbLL* asd = temp;
+                        temp = temp->next;
+                        free(temp->code);
+                        free(temp->token);
+                        free(temp);
+                    }
+                    close(nfd);
+                    exit(0);
+                }
+                if(!strcmp(temp->token, line)){
+                    write(nfd, temp->code, strlen(temp->code));
+                    break;
+                }
+                temp = temp->next;
+            }
+            temp = codes;
+            while(1){
+                if(temp == NULL){
+                    printf("Fatal Error: Error while compressing file, string not in codebook\n");
+                    free(line);
+                    free(input);
+                    temp = codes;
+                    while(temp != NULL){
+                        cbLL* asd = temp;
+                        temp = temp->next;
+                        free(temp->code);
+                        free(temp->token);
+                        free(temp);
+                    }
+                    close(nfd);
+                    exit(0);
+                }
+                char* tokened = stringToken(temp->token);
+                if(!strncmp(input + i,tokened,1)){
+                    write(nfd, temp->code,strlen(temp->code));
+                    free(tokened);
+                    break;
+                }
+                free(tokened);
+                temp = temp->next;
+            }
+            line[0] = '\0';
+            length = 0;
+        }
+        else{
+            strncat(line, input + i, 1);
+            ++length;
+            if((length+1) == buffersize){
+                char* repl = malloc(buffersize * 2);
+                memcpy(repl, line, buffersize);
+                buffersize = buffersize * 2;
+                free(line);
+                line = repl;
+            }
+        }
+    }
+    free(input);
+    free(line);
+    write(nfd, "\n", 1);
+    close(nfd);
 }
 
  /*

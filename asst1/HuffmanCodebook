@@ -1,11 +1,7 @@
 \
-0	\s
-1000	for
-1001	test
-1010	this
-1011	is
-1100	file
-1101	the
-1110	\n
-11110	system
-11111	a
+000	this
+001	is
+01	\s
+100	a
+101	file
+11	\n
