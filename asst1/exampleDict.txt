@@ -1,5 +1,0 @@
-0	word
-10	other
-110	another
-1110	hmm
-1111	\n

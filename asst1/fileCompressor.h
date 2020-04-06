@@ -6,11 +6,18 @@ typedef struct Node{
     struct Node* left;
     struct Node* right;
 }Node;
+typedef struct File{
+    char* path;
+    int fd;
+    struct File* next;
+}File;
 Node* tokenizeDict(int fd);
 int readFile(int fd, Node*** arr, int size);
 char* stringToken(char* token);
 void decompressFile(Node* tree, int ofd, int nfd);
+void compressFile(int cbfd, int ofd, int nfd);
 void createDictionary(Node* tree, int fd);
+File* recurseFiles(char* path);
 void freeTree(void* root);
 Node* createTree(Node** arr, int size);
 #endif
