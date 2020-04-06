@@ -91,7 +91,7 @@ int main(int argc, char** argv){
     }
     //decompress
     else if(mode == 2){
-       if(recursive){
+        if(recursive){
             File* files = recurseFiles(desc);
             if(files == NULL){
                 printf("Warning: Directory is empty\n");
@@ -99,6 +99,12 @@ int main(int argc, char** argv){
             File* temp = files;
             Node* tree = tokenizeDict(codebookFD);
             while(temp!= NULL){
+                char *last_four = &temp->path[strlen(temp->path)-4];
+                if(strcmp(last_four, ".hcz")){
+                    printf("Warning: File is not an hcz file, skipping\n");
+                    temp = temp->next;
+                    continue;
+                }
                 char* newpath = malloc(strlen(temp->path)-3);
                 strncpy(newpath, temp->path, strlen(temp->path)-4);
                 newpath[strlen(temp->path) - 4] = '\0';
@@ -115,8 +121,13 @@ int main(int argc, char** argv){
                 free(trail);
             }
             freeTree(tree);
-       }
-       else{
+        }
+        else{
+            char *last_four = &desc[strlen(desc)-4];
+            if(strcmp(last_four, ".hcz")){
+                printf("Fatal Error: File is not an hcz file\n");
+                exit(0);
+            }
             Node* tree = tokenizeDict(codebookFD);
             char* newpath = malloc(strlen(desc) - 3);
             strncpy(newpath, desc, strlen(desc) - 4);
@@ -126,7 +137,7 @@ int main(int argc, char** argv){
             decompressFile(tree, ofd, nfd);
             freeTree(tree);
             free(newpath);
-       }
+        }
     }
     //building codebook
     else{
@@ -187,7 +198,7 @@ int main(int argc, char** argv){
  */
 
 Node* createTree(Node** arr, int size){
-
+    
 }
 
 /*
