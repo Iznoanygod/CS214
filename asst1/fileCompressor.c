@@ -366,7 +366,7 @@ int readFile(int fd, Node*** arr, int size){
             sscanf(string, "%s", token);
             int j;
             int check = 0;
-            for(j = 0; j < size; j++){
+            for(j = size - 1; j >= 0; j--){
                 if(!strcmp(token, array[j]->value)){
                     check = 1;
                     array[j]->frequency++;
@@ -389,7 +389,7 @@ int readFile(int fd, Node*** arr, int size){
             
             //insert white space
             check = 0;
-            for(j = 0; j < size; ++j){
+            for(j = size - 1; j >= 0; --j){
                 if(!strncmp(input + i, array[j]->value,1)){
                     check = 1;
                     array[j]->frequency++;
