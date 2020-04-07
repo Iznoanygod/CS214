@@ -411,6 +411,7 @@ int readFile(int fd, Node*** arr, int size){
                 size++;
             }
             string[0] = '\0';
+            heapSort(array, size);
         }
         else{
             strncat(string, input + i, 1);
@@ -697,27 +698,29 @@ int compressFile(cbLL* codes, int ofd, int nfd){
     for(i = 0; i < size; i++){
         if(input[i] == '\n' || input[i] == '\t' || input[i] == ' '){
             cbLL* temp = codes;
-            while(1){
-                if(temp == NULL){
-                    printf("Fatal Error: Error while compressing file, string not in codebook\n");
-                    free(line);
-                    free(input);
-                    temp = codes;
-                    while(temp != NULL){
-                        cbLL* asd = temp;
-                        temp = temp->next;
-                        free(asd->code);
-                        free(asd->token);
-                        free(asd);
+            if(strcmp(line,"")){
+                while(1){
+                    if(temp == NULL){
+                        printf("Fatal Error: Error while compressing file, string not in codebook\n");
+                        free(line);
+                        free(input);
+                        temp = codes;
+                        while(temp != NULL){
+                            cbLL* asd = temp;
+                            temp = temp->next;
+                            free(asd->code);
+                            free(asd->token);
+                            free(asd);
+                        }
+                        close(nfd);
+                        return 1;
                     }
-                    close(nfd);
-                    return 1;
+                    if(!strcmp(temp->token, line)){
+                        write(nfd, temp->code, strlen(temp->code));
+                        break;
+                    }
+                    temp = temp->next;
                 }
-                if(!strcmp(temp->token, line)){
-                    write(nfd, temp->code, strlen(temp->code));
-                    break;
-                }
-                temp = temp->next;
             }
             temp = codes;
             while(1){

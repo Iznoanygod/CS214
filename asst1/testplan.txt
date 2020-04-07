@@ -1,0 +1,23 @@
+The directory testfiles contains all files used to test fileCompressor. The structure of testfiles is as follows:
+testfiles/hamlet.txt
+testfiles/additional/macbeth.txt
+testfiles/additional/romeo.txt
+The program was tested by first running it in non recursive mode, first building the codebook using hamlet.txt
+The given codebook was used to compress hamlet.txt and then decompress the given hamlet.txt.hcz
+The commands for these tests were
+>./fileCompressor -b testfiles/hamlet.txt
+>./fileCompressor -c testfiles/hamlet.txt HuffmanCodebook
+>./fileCompressor -d testfiles/hamlet.txt.hcz HuffmanCodebook
+Then it was time to test the recursive mode for the program
+First, I removed the existing codebook
+>rm HuffmanCodebook
+Then, I tested the recursive mode similarly to how I tested the non recursive mode
+>./fileCompressor -R -b testfiles
+>./fileCompressor -R -c testfiles
+This compressed all .txt files in the testfiles directory and subdirectories.
+Then, to see that the the program does decompress the files properly, we need to remove the .txt files then decompress
+>mv testfiles/hamlet.txt testfiles/hamlet.txt.bak
+>mv testfiles/additional/macbeth.txt testfiles/additional/macbeth.txt.bak
+>mv testfiles/additional/romeo.txt testfiles/additional/romeo.txt.bak
+>./fileCompressor -R -d testfiles
+The output .txt files can be compared against the .txt.bak files that the files were moved to. This verifies that recursive decompress works properly.
