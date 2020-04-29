@@ -108,7 +108,23 @@ void * handleClient(void * args)
         }
     }
     if(!strcmp(buffer, "create")){
+        int length;
+        int i;
+        for(int i = 0; ;i++){
+            int in = read(sock, buffer+1, 1);
+            if(in < 1){
+                printf("Error: failed reading message from client, closing socket\n");
+                close(sock);
+                return;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        length = atoi(buffer);;
         
+
     }
     close(sock);
 }
