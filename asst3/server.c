@@ -9,6 +9,7 @@
 #include <arpa/inet.h> 
 #include <signal.h>
 #include <math.h>
+#include <libtar.h>
 #include "server.h"
 
 
@@ -90,13 +91,25 @@ void * handleClient(void * args)
 	int clientNum = ((int*) args)[1];
 	
 	char buffer[BUFF_SIZE] = {0};
-	int readret = read(sock, buffer, BUFF_SIZE);
-	printf("%s\n", buffer);
 	
 	char message[21] = "clientConnectSuccess";
 	send(sock, message, strlen(message), 0);
-	
-
+    int i;
+    for(i = 0; ;i++){
+        int in = read(sock, buffer+i, 1);
+        if(in < 1){
+            printf("Error: failed reading message from client, closing socket\n");
+            close(sock);
+            return;
+        }
+        if(buffer[i] == ':'){
+            buffer[i] = '\0';
+            break;
+        }
+    }
+    if(!strcmp(buffer, "create")){
+        
+    }
     close(sock);
 }
 
