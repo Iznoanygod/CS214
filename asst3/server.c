@@ -91,15 +91,13 @@ void * handleClient(void * args)
 	
 	char buffer[BUFF_SIZE] = {0};
 	int readret = read(sock, buffer, BUFF_SIZE);
-	
 	printf("%s\n", buffer);
 	
-	char message[20] = "Welcome client ";
-	strcat(message, itoa(clientNum));
-	
+	char message[21] = "clientConnectSuccess";
 	send(sock, message, strlen(message), 0);
 	
-	close(sock);
+
+    close(sock);
 }
 
 char * itoa(int i) 
