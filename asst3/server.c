@@ -81,7 +81,6 @@ void acceptClients(int port)
 		curr = next;
 	}
 	
-	
 	collectThreads(tidHead);
 }
 
@@ -98,7 +97,6 @@ void * handleClient(void * args)
 	char message[20] = "Welcome client ";
 	strcat(message, itoa(clientNum));
 	
-	printf("here");
 	send(sock, message, strlen(message), 0);
 	
 	close(sock);
@@ -106,7 +104,6 @@ void * handleClient(void * args)
 
 char * itoa(int i) 
 {
-	printf("here");
 	int size = (int)((ceil(log10(i))+1)*sizeof(char));
 	char * str = (char *) malloc(size);
 	sprintf(str, "%i", i);
