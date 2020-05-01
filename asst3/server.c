@@ -131,7 +131,7 @@ void * handleClient(void * args)
             }
         }
         length = atoi(buffer);
-        int in = read(sock, buffer, length);
+        int in = simpleRead(sock, buffer, length);
         if(in < length){
             printf("Error: failed reading message from client, closing socket\n");
             send(sock, "11:messageFail", 15, 0);
@@ -175,7 +175,7 @@ void * handleClient(void * args)
             }
         }
         length = atoi(buffer);
-        int in = read(sock, buffer, length);
+        int in = simpleRead(sock, buffer, length);
         if(in < length){
             printf("Error: failed reading message from client, closing socker\n");
             send(sock, "11:messageFail", 15, 0);
@@ -257,18 +257,9 @@ int rolebackProject(char* projName, int version){
     strcpy(path, projName);
     strcat(path, "/.Current");
     int verFD = open(path, O_RDWR);
-    int verSize = lseek(verFD, 0, SEEK_END);
-    lseek(verFD, 0, SEEK_SET);
     char in[BUFF_SIZE] = {0};
-    int readin = 0;
-    while(1){
-        int status = read(verFD, in+readin, verSize-readin);
-        readin += status;
-        if(readin == verSize)
-            break;
-    }
+    simpleRead(verFD, in, -1);
     close(verFD);
-    in[readin] = '\0';
     int currentVer;
     sscanf(in, "ver%d", &currentVer);
     if(currentVer < version){
@@ -282,7 +273,7 @@ int rolebackProject(char* projName, int version){
     verFD = open(path, O_RDWR | O_TRUNC);
     char versionOut[BUFF_SIZE];
     sprintf(versionOut, "ver%d\n", version);
-    write(verFD, versionOut, strlen(versionOut));
+    simpleWrite(verFD, versionOut,  -1);
     close(verFD);
     sprintf(path, "rm -rf %s/ver%d", projName, currentVer);
     system(path);
@@ -291,10 +282,10 @@ int rolebackProject(char* projName, int version){
         sprintf(path, "rm %s/ver%d.tar.gz", projName, i);
         system(path);
     }
-    char decompress[BUFF_SIZE];
+    //char decompress[BUFF_SIZE];
     sprintf(path, "%s/ver%d.tar.gz", projName, version);
-    
-    gzFile fi = gzopen(path,"rb");
+    unTar(path, projName);
+    /*gzFile fi = gzopen(path,"rb");
     gzrewind(fi);
     sprintf(path, "%s/ver%d.tar", projName, version);
     int tfd = open(path, O_RDWR | O_CREAT | O_APPEND, S_IRWXU);
@@ -309,7 +300,8 @@ int rolebackProject(char* projName, int version){
     tar_extract_all(pTar, projName);
     //deal with decompressed data
     tar_close(pTar);
-    remove(path);
+    remove(path);*/
+    
     sprintf(path, "%s/ver%d.tar.gz", projName, version);
     remove(path);
     pthread_mutex_unlock(proj->lock);
@@ -434,7 +426,7 @@ int main(int argc, char *argv[])
 	
 	int pfd = open(".projects", O_RDWR | O_CREAT, S_IRWXU);
     char fileIn[BUFF_SIZE] = {0};
-    simpleRead(pfd, fileIn);
+    simpleRead(pfd, fileIn, -1);
     close(pfd);
     int fsize = strlen(fileIn);
     if(fsize > 1){
@@ -464,6 +456,9 @@ int main(int argc, char *argv[])
 	running = 1;
 	pLock = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(pLock, NULL);
+    
+    rolebackProject("proj", 0);
+
     acceptClients(25585);
 }
 void createProjectFile(){
@@ -472,10 +467,10 @@ void createProjectFile(){
     PNode* temp = projects;
     temp = projects;
     if(temp == NULL)
-        simpleWrite(fd, "\n");
+        simpleWrite(fd, "\n", -1);
     while(temp != NULL){
-        simpleWrite(fd, temp->project);
-        simpleWrite(fd, "\n");
+        simpleWrite(fd, temp->project, -1);
+        simpleWrite(fd, "\n", -1);
         temp = temp->next;
     }
     close(fd);

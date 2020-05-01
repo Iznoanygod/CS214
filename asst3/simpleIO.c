@@ -3,10 +3,19 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <zlib.h>
+#include <libtar.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "simpleIO.h"
 
-int simpleRead(int fd, char* buffer){
-    int size = lseek(fd, 0, SEEK_END);
+int simpleRead(int fd, char* buffer, int maxRead){
+    int size;
+    if(maxRead == -1)
+        size = lseek(fd, 0, SEEK_END);
+    else
+        size = maxRead;
     lseek(fd, 0, SEEK_SET);
     int readin = 0;
     while(1){
@@ -22,8 +31,12 @@ int simpleRead(int fd, char* buffer){
     return 1;
 }
 
-int simpleWrite(int fd, char* buffer){
-    int size = strlen(buffer);
+int simpleWrite(int fd, char* buffer, int maxWrite){
+    int size;
+    if(maxWrite == -1)
+        size = strlen(buffer);
+    else
+        size = maxWrite;
     int writeout = 0;
     while(1){
         int status = write(fd, buffer+writeout, size-writeout);
@@ -35,4 +48,29 @@ int simpleWrite(int fd, char* buffer){
             break;
     }
     return 1;
+}
+
+int unTar(char* path, char* loc){
+    gzFile fi = gzopen(path, "rb");
+    gzrewind(fi);
+    char* tarPath = malloc(strlen(path));
+    strcpy(tarPath, path);
+    tarPath[strlen(path) - 3] = '\0';
+    int tfd = open(tarPath, O_RDWR | O_CREAT | O_APPEND, S_IRWXU);
+    while(!gzeof(fi)){
+        char buffer[1024] = {0};
+        int zlen = gzread(fi, buffer, 1024);
+        if(!simpleWrite(tfd, buffer, 1024)){
+            return 0;
+        }
+    }
+    gzclose(fi);
+    close(tfd);
+    TAR *pTar = NULL;
+    tar_open(&pTar, tarPath, NULL, O_RDONLY, 0777, TAR_GNU);
+    tar_extract_all(pTar, loc);
+    tar_close(pTar);
+    remove(tarPath);
+    return 1;
+
 }

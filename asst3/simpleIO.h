@@ -1,5 +1,6 @@
 #ifndef _FILEIO_H
 #define _FILEIO_H 1
-int simpleRead(int fd, char* buffer);
-int simpleWrite(int fd, char* buffer);
+int simpleRead(int fd, char* buffer, int maxRead);
+int simpleWrite(int fd, char* buffer, int maxWrite);
+int unTar(char* path, char* loc);
 #endif
