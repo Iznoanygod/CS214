@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <zlib.h>
+#include "simpleIO.h"
 #include "server.h"
 
 
@@ -62,7 +63,7 @@ void acceptClients(int port)
         perror("Failed to listen.\n"); 
         exit(EXIT_FAILURE); 
     } 
-	
+	printf("Waiting for clients...\n");
 	while (running)
 	{
 		int sock = accept(serverFD, (struct sockaddr*) &address, (socklen_t*)&addrlen);
@@ -255,7 +256,7 @@ int rolebackProject(char* projName, int version){
     char path[BUFF_SIZE] = {0};
     strcpy(path, projName);
     strcat(path, "/.Current");
-    int verFD = open(path, O_RDONLY);
+    int verFD = open(path, O_RDWR);
     int verSize = lseek(verFD, 0, SEEK_END);
     lseek(verFD, 0, SEEK_SET);
     char in[BUFF_SIZE] = {0};
@@ -278,6 +279,11 @@ int rolebackProject(char* projName, int version){
         pthread_mutex_unlock(proj->lock);
         return 1;
     }
+    verFD = open(path, O_RDWR | O_TRUNC);
+    char versionOut[BUFF_SIZE];
+    sprintf(versionOut, "ver%d\n", version);
+    write(verFD, versionOut, strlen(versionOut));
+    close(verFD);
     sprintf(path, "rm -rf %s/ver%d", projName, currentVer);
     system(path);
     int i;
@@ -285,25 +291,26 @@ int rolebackProject(char* projName, int version){
         sprintf(path, "rm %s/ver%d.tar.gz", projName, i);
         system(path);
     }
-    char decompress[10240];
+    char decompress[BUFF_SIZE];
     sprintf(path, "%s/ver%d.tar.gz", projName, version);
     
     gzFile fi = gzopen(path,"rb");
     gzrewind(fi);
-    int zlen = 0;
+    sprintf(path, "%s/ver%d.tar", projName, version);
+    int tfd = open(path, O_RDWR | O_CREAT | O_APPEND, S_IRWXU);
     while(!gzeof(fi)){
-        zlen += gzread(fi, decompress + zlen, sizeof(decompress));
+        int zlen = gzread(fi, decompress, sizeof(decompress));
+        write(tfd, decompress, zlen); 
     }
     gzclose(fi);
-    sprintf(path, "%s/ver%d.tar", projName, version);
-    int tFD = open(path, O_RDWR | O_CREAT, S_IRWXU);
-    write(tFD, decompress, zlen);
-    close(tFD);
+    close(tfd);
     TAR *pTar = NULL;
-    tar_open(&pTar, path, NULL, O_RDWR, 0777, TAR_GNU);
+    tar_open(&pTar, path, NULL, O_RDONLY, 0777, TAR_GNU);
     tar_extract_all(pTar, projName);
     //deal with decompressed data
     tar_close(pTar);
+    remove(path);
+    sprintf(path, "%s/ver%d.tar.gz", projName, version);
     remove(path);
     pthread_mutex_unlock(proj->lock);
     return 1;
@@ -426,17 +433,10 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sig_handler);
 	
 	int pfd = open(".projects", O_RDWR | O_CREAT, S_IRWXU);
-    int fsize = lseek(pfd, 0, SEEK_END);
-    lseek(pfd, 0, SEEK_SET);
-    char* fileIn = malloc(fsize);
-    int readin = 0;
-    while(1){
-        int status = read(pfd, fileIn + readin, fsize - readin);
-        readin += status;
-        if(readin == fsize)
-            break;
-    }
+    char fileIn[BUFF_SIZE] = {0};
+    simpleRead(pfd, fileIn);
     close(pfd);
+    int fsize = strlen(fileIn);
     if(fsize > 1){
         char* line = malloc(fsize);
         line[0] = '\0';
@@ -459,13 +459,11 @@ int main(int argc, char *argv[])
         }
         free(line);
     }
-    free(fileIn);
     tidHead = NULL;
 	numClients = 0;
 	running = 1;
 	pLock = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(pLock, NULL);
-    rolebackProject("proj", 0);
     acceptClients(25585);
 }
 void createProjectFile(){
@@ -474,10 +472,10 @@ void createProjectFile(){
     PNode* temp = projects;
     temp = projects;
     if(temp == NULL)
-        write(fd, "\n", 1);
+        simpleWrite(fd, "\n");
     while(temp != NULL){
-        write(fd, temp->project, strlen(temp->project));
-        write(fd, "\n", 1);
+        simpleWrite(fd, temp->project);
+        simpleWrite(fd, "\n");
         temp = temp->next;
     }
     close(fd);
