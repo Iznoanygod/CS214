@@ -57,11 +57,9 @@ int main(int argc, char *argv[])
 	send(sock, "hey", strlen("hey"), 0);
 	
 	char buff[BUFF_SIZE] = {0};
-	int totalBytesRead = 0;
 	while (1)
 	{
-		int bytesRead = read(sock, buff+totalBytesRead, BUFF_SIZE);
-		totalBytesRead+=bytesRead;
+		int bytesRead = read(sock, buff, BUFF_SIZE);
 		
 		if (strcmp(buff,"") != 0)
 		{

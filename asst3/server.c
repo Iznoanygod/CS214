@@ -18,11 +18,11 @@
 bool running;
 TNode *tidHead;
 int numClients;
+int serverFD;
 
 
 void acceptClients(int port)
 {
-	int serverFD;
 	int opt = 1;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
@@ -82,6 +82,7 @@ void acceptClients(int port)
 		curr = next;
 	}
 	
+	close(serverFD);
 	collectThreads(tidHead);
 }
 
@@ -154,6 +155,8 @@ void sig_handler(int sig)
 	printf("\nStopping server...\n");
 	running = false;
 	collectThreads(tidHead);
+	// we might want to put accept clients on a separate thread and cancel/join? it here
+	close(serverFD);
 	exit(0);
 }
 
