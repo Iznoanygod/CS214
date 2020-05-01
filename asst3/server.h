@@ -10,9 +10,16 @@ typedef struct TNode
 	struct TNode* next;
 }TNode;
 
+typedef struct PNode
+{
+    char* project;
+    pthread_mutex_t* lock;
+    struct PNode* next;
+}PNode;
+
 void acceptClients(int port);
 void * handleClient(void * socket);
 void collectThreads(TNode *head);
 char * itoa(int i);
-
+int createProject(char* projName);
 #endif
