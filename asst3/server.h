@@ -2,8 +2,6 @@
 #define _SERVER_H 1
 #include <pthread.h>
 
-typedef enum {false,true} bool;
-
 typedef struct TNode
 {
 	pthread_t tid;
@@ -21,5 +19,9 @@ void acceptClients(int port);
 void * handleClient(void * socket);
 void collectThreads(TNode *head);
 char * itoa(int i);
+void createProjectFile();
 int createProject(char* projName);
+int destroyProject(char* projName);
+int rolebackProject(char* projName, int version);
+int currentVersion(char* projName);
 #endif
