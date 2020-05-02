@@ -74,3 +74,15 @@ int unTar(char* path, char* loc){
     return 1;
 
 }
+
+int Tar(char* path, char* loc){
+    TAR *pTar = NULL;
+    char* tarPath = malloc(strlen(path) + 5);
+    strcpy(tarPath, path);
+    strcat(tarPath, ".tar");
+    tar_open(&pTar, tarPath, NULL, O_WRONLY | O_CREAT, 0777, TAR_GNU);
+    tar_append_tree(pTar, path, loc);
+    tar_append_eof(pTar);
+    tar_close(pTar);
+    return 1;
+}

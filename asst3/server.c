@@ -17,8 +17,7 @@
 #include "simpleIO.h"
 #include "server.h"
 
-
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 4096
 
 int running;
 TNode *tidHead;
