@@ -456,8 +456,6 @@ int main(int argc, char *argv[])
 	pLock = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(pLock, NULL);
     
-    rolebackProject("proj", 0);
-
     acceptClients(25585);
 }
 void createProjectFile(){
