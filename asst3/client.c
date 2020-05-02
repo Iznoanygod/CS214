@@ -8,9 +8,11 @@
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
 #include <signal.h>
+#include <math.h>
 
 
 #define BUFF_SIZE 1024
+#define DELIM ":"
 
 
 /** TODO
@@ -84,8 +86,7 @@ int main(int argc, char** argv){
 	}
 	if (!strcmp(argv[1], "commit"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
 		
 		// check if nonempty .Update file exists	no-->proceed
 		// check if .Conflict file exists			no-->proceed
@@ -94,53 +95,63 @@ int main(int argc, char** argv){
 		// go through every file listed in manifest and compute a live hash for it
 		// compare each live hash to the stored hash in the manifest file (write each different case to a .Commit file)
 		// compare servers manifest with client's, check for different hashes with >= version numbers		yes-->tell user to update&upgrade
+		free(host);
 	}
 	if (!strcmp(argv[1], "push"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		
+		free(host);
 	}
 	if (!strcmp(argv[1], "create"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		
+		char *args[] = {argv[1], itoa(strlen(argv[2])), argv[2]};
+		char *message = formatMessage(DELIM, 3, args);
+		
+		printf("%s\n", message);
+		//sock = getSocket(host[0], host[1]);
+		//send(sock, message, strlen(message), 0);
+		
+		free(message);
+		free(host);
 	}
 	if (!strcmp(argv[1], "destroy"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		free(host);
 	}
 	if (!strcmp(argv[1], "add"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		free(host);
 	}
 	if (!strcmp(argv[1], "remove"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		free(host);
 	}
 	if (!strcmp(argv[1], "currentversion"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		free(host);
 	}
 	if (!strcmp(argv[1], "history"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		free(host);
 	}
 	if (!strcmp(argv[1], "rollback"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		free(host);
 	}
 	if (!strcmp(argv[1], "checkout"))
 	{
-		char *host[2];
-		readConfig(&host);
+		char ** host = readConfig();
+		free(host);
 	}
-	
 }
 
 
@@ -183,7 +194,7 @@ void sig_handler(int sig)
 /**
 * ret[0] = ip,  ret[1] = port
 **/
-void readConfig(char *ret[])
+char ** readConfig()
 {
 	int fd = open (".configure", O_RDONLY);
 	if(fd == -1)
@@ -207,6 +218,7 @@ void readConfig(char *ret[])
 		totalBytesRead+=bytesRead;
 	} while(bytesRead != 0);
 	
+	char ** ret = malloc(totalBytesRead);
 	char *token = strtok(buf, " ");
 	int i;
 	for (i = 0; i < 2 && token!=NULL; i++)
@@ -214,11 +226,12 @@ void readConfig(char *ret[])
 		ret[i] = token;
 		token = strtok(NULL, " ");
 	}
+	return ret;
 }
 
 void writeConfig(char *host, char *port)
 {
-	int fd = open(".configure", O_RDWR | O_CREAT, S_IRWXU);
+	int fd = open(".configure", O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
 	if(fd == -1){
 		printf("Fatal error: error writing to .configure file\n");
 		exit(EXIT_FAILURE);
@@ -241,6 +254,39 @@ void writeConfig(char *host, char *port)
 		close(fd);
 		exit(EXIT_FAILURE);
 	}
+}
+
+char * formatMessage(char *delim, int argc, char **args)
+{
+	char *message = (char *) malloc(argc+getTotalCharLength(argc, args));
+	int i;
+	for (i = 0; i < argc; i++)
+	{
+		strcat(message, args[i]);
+		strcat(message, delim);
+	}
+	return message;
+}
+
+int getTotalCharLength(int argc, char **args)
+{
+	int ret = 0;
+	int i;
+	for (int i = 0; i < argc; i++)
+	{
+		ret += strlen(args[i]);
+	}
+	return ret;
+}
+
+char * itoa(int i) 
+{
+	int size = (ceil(log10(i+1))+1);
+    if(i == 0)
+        size = 2;
+    char * str = (char *) malloc(size);
+	sprintf(str, "%i", i);
+	return str;
 }
 
 bool isNumber(char* in){
