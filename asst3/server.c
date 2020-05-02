@@ -12,6 +12,7 @@
 #include <math.h>
 //#include <libtar.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <dirent.h>
 //#include <zlib.h>
 #include "simpleIO.h"
@@ -74,17 +75,15 @@ void acceptClients(int port)
 		}
 		
 		numClients++;
-		TNode *curr = tidHead;
-	
-		int *args = (int*)malloc(sizeof(int));
+		TNode *curr = malloc(sizeof(TNode));
+        curr->tid = 0;
+        curr->next = tidHead;
+        tidHead = curr;
+		int *args = malloc(sizeof(int) * 2);
 		args[0] = sock;
 		args[1] = numClients;
 		
 		pthread_create(&(curr->tid), NULL, handleClient, (void*) args);
-		
-		TNode *next = malloc(sizeof(TNode));
-		curr->next = next;
-		curr = next;
 	}
 	
 	collectThreads(tidHead);
@@ -94,7 +93,7 @@ void * handleClient(void * args)
 {
 	int sock = ((int*) args)[0];
 	int clientNum = ((int*) args)[1];
-	
+	free(args);
 	char buffer[BUFF_SIZE] = {0};
 	
 	char message[24] = "20:clientConnectSuccess";
@@ -131,7 +130,7 @@ void * handleClient(void * args)
         }
         length = atoi(buffer);
         int in = simpleRead(sock, buffer, length);
-        if(in < length){
+        if(in != 1){
             printf("Error: failed reading message from client, closing socket\n");
             send(sock, "11:messageFail", 15, 0);
             close(sock);
@@ -175,7 +174,7 @@ void * handleClient(void * args)
         }
         length = atoi(buffer);
         int in = simpleRead(sock, buffer, length);
-        if(in < length){
+        if(in != 1){
             printf("Error: failed reading message from client, closing socker\n");
             send(sock, "11:messageFail", 15, 0);
             close(sock);
@@ -416,6 +415,14 @@ void sig_handler(int sig)
     pthread_mutex_destroy(pLock);
     free(pLock);
     collectThreads(tidHead);
+    while(projects != NULL){
+        PNode* temp = projects;
+        projects = projects->next;
+        free(temp->project);
+        pthread_mutex_destroy(temp->lock);
+        free(temp->lock);
+        free(temp);
+    }
     exit(0);
 }
 
@@ -451,7 +458,7 @@ int main(int argc, char *argv[])
         free(line);
     }
     tidHead = NULL;
-	numClients = 0;
+    numClients = 0;
 	running = 1;
 	pLock = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(pLock, NULL);

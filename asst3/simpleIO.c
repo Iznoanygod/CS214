@@ -87,5 +87,8 @@ int Tar(char* path, char* loc){
     tar_append_tree(pTar, path, loc);
     tar_append_eof(pTar);
     tar_close(pTar);*/
+    char asd[1024] = {0};
+    sprintf(asd, "tar czvf %s %s", path, loc);
+    system(asd);
     return 1;
 }
