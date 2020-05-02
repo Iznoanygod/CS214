@@ -10,10 +10,10 @@
 #include <signal.h>
 #include <errno.h>
 #include <math.h>
-#include <libtar.h>
+//#include <libtar.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include <zlib.h>
+//#include <zlib.h>
 #include "simpleIO.h"
 #include "server.h"
 
