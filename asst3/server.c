@@ -112,6 +112,42 @@ void * handleClient(void * args)
             break;
         }
     }
+    if(!strcmp(buffer, "commit")){
+        char inbound[BUFF_SIZE] = {0};
+        char outbound[BUFF_SIZE] = {0};
+        char systemC[BUFF_SIZE] = {0};
+        int i;
+        for(i = 0; ; i++){
+            read(sock, inbound + i, 1);
+            if(inbound[i] == ':')
+                break;
+        }
+        inbound[i] = '\0';
+        int len = atoi(inbound);
+        simpleRead(sock, inbound, len);
+        char* projName = malloc(len+1);
+        strcpy(projName, inbound);
+        sprintf(systemC, "%s/.Current", projName);
+        int cfd = open(systemC, O_RDONLY);
+        simpleRead(cfd, inbound, -1);
+        close(cfd);
+        char currentVersion[BUFF_SIZE] = {0};
+        sscanf(inbound, "%s", currentVersion);
+        sprintf(systemC, "gzip -k %s/%s/.Manifest", projName, currentVersion);
+        system(systemC);
+        sprintf(systemC, "%s/%s/.Manifest.gz", projName, currentVersion);
+        int mfd = open(systemC, O_RDONLY);
+        int msize = lseek(mfd, 0, SEEK_END);
+        lseek(mfd, 0, SEEK_SET);
+        char* manifestgz = malloc(msize+1);
+        simpleRead(mfd, manifestgz, msize);
+        sprintf(outbound, "%d:", msize);
+        send(sock, outbound, strlen(outbound), 0);
+        send(sock, manifestgz, msize, 0);
+        remove(systemC);
+        close(mfd);
+        free(manifestgz);
+    }
     if(!strcmp(buffer, "push")){
         int length;
         int i;
@@ -182,7 +218,7 @@ void * handleClient(void * args)
             int in = read(sock, buffer+i, 1);
             if(in < 1){
                 printf("Error: failed reading message from client, closing socket\n");
-                send(sock, "11:messageFail", 15, 0);
+                send(sock, "0:11:messageFail", 16, 0);
                 close(sock);
                 return NULL;
             }
@@ -193,9 +229,9 @@ void * handleClient(void * args)
         }
         length = atoi(buffer);
         int in = simpleRead(sock, buffer, length);
-        if(in <= 1){
+        if(in < 1){
             printf("Error: failed reading message from client, closing socket\n");
-            send(sock, "11:messageFail", 15, 0);
+            send(sock, "0:11:messageFail", 16, 0);
             close(sock);
             return NULL;
         }
@@ -210,7 +246,7 @@ void * handleClient(void * args)
         }
         pthread_mutex_unlock(pLock);
         if(pr == NULL){
-            send(sock, "15:projectNotExist", 19, 0);
+            send(sock, "0:15:projectNotExist", 20, 0);
             close(sock);
             return NULL;
         }
@@ -339,7 +375,7 @@ void * handleClient(void * args)
         }
         length = atoi(buffer);
         int in = simpleRead(sock, buffer, length);
-        if(in <= 1){
+        if(in < 1){
             printf("Error: failed reading message from client, closing socket\n");
             send(sock, "11:messageFail", 15, 0);
             close(sock);
@@ -434,7 +470,7 @@ void * handleClient(void * args)
             int in = read(sock, buffer+i, 1);
             if(in < 1){
                 printf("Error: failed reading message from client, closing socket\n");
-                send(sock, "11:messageFail", 15, 0);
+                send(sock, "0:11:messageFail", 16, 0);
                 close(sock);
                 return NULL;
             }
@@ -447,7 +483,7 @@ void * handleClient(void * args)
         int in = simpleRead(sock, buffer, length);
         if(in <= 1){
             printf("Error: failed reading message from client, closing socket\n");
-            send(sock, "11:messageFail", 15, 0);
+            send(sock, "0:11:messageFail", 16, 0);
             close(sock);
             return NULL;
         }
@@ -461,7 +497,7 @@ void * handleClient(void * args)
         }
         if(proj == NULL){
             printf("Error: failed to get current version, project doesn't exist\n");
-            send(sock, "15:projectNotExist", 19, 0);
+            send(sock, "0:15:projectNotExist", 20, 0);
             close(sock);
             return NULL;
         }
