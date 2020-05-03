@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include "client.h"
+#include <dirent.h>
 #include "simpleIO.h"
 #define BUFF_SIZE 4096
 
@@ -100,6 +101,50 @@ int main(int argc, char** argv){
         write(tarFD, tarcontents, size);
         close(tarFD);
         close(sock);
+        return 0;
+    }
+    if(!strcmp(argv[1], "rollback")){
+        if(argc != 4){
+            printf("Fatal error: wrong number of arguments given\n");
+            return 0;
+        }
+        struct sockaddr_in serv_addr;
+        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(25585);
+        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+        connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+        
+        char message[BUFF_SIZE] = {0};
+        int i;
+        for(i = 0; ; i++){
+            read(sock, message + i, 1);
+            if(message[i] == ':')
+                break;
+        }
+        message[i] = '\0';
+        int len = atoi(message);
+        char* serMes = malloc(len + 1);
+        simpleRead(sock, serMes, len);
+        printf("%s\n", serMes);
+        free(serMes);
+        sprintf(message, "rollback:%d:%s:%d:%s", strlen(argv[2]), argv[2], strlen(argv[3]), argv[3]);
+        send(sock, message, strlen(message), 0);
+
+        message[0] = '\0';
+        for(i = 0; ; i++){
+            read(sock, message + i, 1);
+            if(message[i] == ':')
+                break;
+        }
+        message[i] = '\0';
+        len = atoi(message);
+        serMes = malloc(len + 1);
+        simpleRead(sock, serMes, len);
+        
+        printf("%s\n", serMes);
+
+        free(serMes);
         return 0;
     }
     if(!strcmp(argv[1], "create")){
@@ -210,9 +255,104 @@ int main(int argc, char** argv){
         free(serMes);
     }
     if(!strcmp(argv[1], "add")){
-        
-
-
+        if(argc != 4){
+            printf("Fatal error: wrong number of arguments given\n");
+            return 0;
+        }
+        DIR* dir = opendir(argv[2]);
+        if(!dir){
+            printf("Fatal error: project does not exist\n");
+            return 0;
+        }
+        closedir(dir);
+        char manifestPath[BUFF_SIZE] = {0};
+        sprintf(manifestPath, "%s/.Manifest", argv[2]);
+        int mfd = open(manifestPath, O_RDWR);
+        if(mfd == -1){
+            printf("Fatal error: path is not a valid project\n");
+            return 0;
+        }
+        int msize = lseek(mfd, 0, SEEK_END);
+        lseek(mfd, 0, SEEK_SET);
+        int version;
+        int i;
+        char* buffer = malloc(msize+1);
+        simpleRead(mfd, buffer, -1);
+        char* line = malloc(msize + 1);
+        line[0] = '\0';
+        for(i = 0; ; i++){
+            if(buffer[i] == '\n')
+                break;
+            strncat(line, buffer+i, 1);
+        }
+        FNode* fileList = NULL;
+        line[i] = '\0';
+        version = atoi(line);
+        line[0] = '\0';
+        for(++i;i < msize; i++){
+            if(buffer[i] == '\n'){
+                line[i] = '\0';
+                int linesize = strlen(line);
+                char* FName = malloc(linesize);
+                char* FHash = malloc(linesize);
+                int FVersion;
+                sscanf(line, "%s %d %s", FName, &FVersion, FHash);
+                FNode* temp = malloc(sizeof(FNode));
+                temp->path = FName;
+                temp->hash = FHash;
+                temp->version = FVersion;
+                temp->next = fileList;
+                fileList = temp;
+            }
+            else
+                strncat(line, buffer+i, 1);
+        }
+        FNode* track = fileList;
+        while(track != NULL){
+            if(!strcmp(track->path, argv[3]))
+                break;
+            track = track->next;
+        }
+        if(track == NULL){
+            FNode* temp = malloc(sizeof(FNode));
+            temp->path = malloc(strlen(argv[3])+1);
+            strcpy(temp->path, argv[3]);
+            temp->version = 0;
+            temp->hash = md5(argv[3]);
+            temp->next = fileList;
+            fileList = temp;
+        }
+        else{
+            char* newHash = md5(argv[3]);
+            if(strcmp(newHash, track->hash)){
+                track->version++;
+                free(track->hash);
+                track->hash = newHash;
+            }
+            else{
+                free(newHash);
+            }
+        }
+        insertionSort(&fileList);
+        close(mfd);
+        mfd = open(manifestPath, O_RDWR | O_TRUNC);
+        char versionC[512] = {0};
+        sprintf(versionC, "%d\n", version);
+        simpleWrite(mfd, versionC, -1);
+        while(fileList != NULL){
+            char output[BUFF_SIZE] = {0};
+            sprintf(output, "%s %d %s\n", fileList->path, fileList->version, fileList->hash);
+            simpleWrite(mfd, output, -1);
+            FNode* temp = fileList;
+            fileList = fileList->next;
+            free(temp->path);
+            free(temp->hash);
+            free(temp);
+        }
+        free(buffer);
+        free(line);
+        close(mfd);
+        return 0;
     }
     if(!strcmp(argv[1], "currentversion")){
         if(argc != 3){

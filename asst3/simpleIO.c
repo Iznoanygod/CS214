@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <openssl/md5.h>
 #include "simpleIO.h"
 
 int simpleRead(int fd, char* buffer, int maxRead){
@@ -122,4 +123,30 @@ int insertionSort(FNode** toSort){
     FNode** root = toSort;
     *root = head;
     return 0;
+}
+char* md5(char* path){
+    unsigned char c[MD5_DIGEST_LENGTH];
+    int fd = open(path, O_RDONLY);
+    MD5_CTX mdContext;
+    int bytes;
+    unsigned char buffer[256];
+    if(fd < 0)
+        return NULL;
+    MD5_Init(&mdContext);
+    do{
+        bzero(buffer, 256);
+        bytes = read(fd, buffer, 256);
+        MD5_Update (&mdContext, buffer, bytes);
+    }while(bytes > 0);
+    MD5_Final(c, &mdContext);
+    close(fd);
+    int i;
+    char* hash = malloc(33);
+    bzero(hash, 32);
+    char buf[3];
+    for(i = 0; i < MD5_DIGEST_LENGTH; i++){
+        sprintf(buf, "%02x", c[i]);
+        strcat(hash, buf);
+    }
+    return hash;
 }

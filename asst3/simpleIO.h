@@ -12,4 +12,5 @@ int simpleRead(int fd, char* buffer, int maxRead);
 int simpleWrite(int fd, char* buffer, int maxWrite);
 int unTar(char* path, char* loc);
 int Tar(char* path, char* loc);
+char* md5(char* path);
 #endif

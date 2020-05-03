@@ -250,6 +250,77 @@ void * handleClient(void * args)
         free(systemCopy);
         pthread_mutex_unlock(pr->lock);
     }
+    if(!strcmp(buffer, "rollback")){
+        int length;
+        int i;
+        for(i = 0; ; i++){
+            int in = read(sock, buffer+i, 1);
+            if(in < 1){
+                printf("Error: failed reading message form cient, closing socket\n");
+                send(sock, "11:messageFail", 15, 0);
+                close(sock);
+                return NULL;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        length = atoi(buffer);
+        int in = simpleRead(sock, buffer, length);
+        if(in < 1){
+            printf("Error: failed reading message from client, closing socket\n");
+            send(sock, "11:messageFail", 15, 0);
+            close(sock);
+            return NULL;
+        }
+        buffer[length] = '\0';
+        char* projName = malloc(strlen(buffer) + 1);
+        strcpy(projName, buffer);
+        read(sock, buffer, 1);
+        for(i = 0; ; i++){
+            int in = read(sock, buffer+i, 1);
+            if(in < 1){
+                printf("Error: failed reading message form cient, closing socket\n");
+                send(sock, "11:messageFail", 15, 0);
+                close(sock);
+                return NULL;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        length = atoi(buffer);
+        in = simpleRead(sock, buffer, length);
+        if(in < 1){
+            printf("Error: failed reading message from client, closing socket\n");
+            send(sock, "11:messageFail", 15, 0);
+            close(sock);
+            return NULL;
+        }
+        buffer[length] = '\0';
+        if(!isNumber(buffer)){
+            send(sock, "14:invalidVersion", 18, 0);
+            close(sock);
+            free(projName);
+            return NULL;
+        }
+        int version = atoi(buffer);
+        int state = rollbackProject(projName, version);
+        if(state == -1){
+            send(sock, "15:projectNotExist", 19, 0);
+        }
+        else if(!state){
+            send(sock, "14:invalidVersion", 18, 0);
+        }
+        else{
+            send(sock, "15:projectSuccess", 19, 0);
+        }
+        free(projName);
+        close(sock);
+        return NULL;
+    }
     if(!strcmp(buffer, "create")){
         int length;
         int i;
@@ -506,7 +577,7 @@ int rollbackProject(char* projName, int version){
     sprintf(versionOut, "ver%d\n", version);
     simpleWrite(verFD, versionOut,  -1);
     close(verFD);
-    sprintf(path, "rm %s/commits/*", projName);
+    sprintf(path, "rm -rf %s/commits; mkdir %s/commits", projName, projName);
     system(path);
     sprintf(path, "rm -rf %s/ver%d", projName, currentVer);
     system(path);

@@ -1,11 +1,11 @@
 all:
-	gcc client.c -g -o WTF simpleIO.o
+	gcc client.c -lssl -lcrypto -g -o WTF simpleIO.o
 client:
-	gcc client.c -g -o WTF simpleIO.o
+	gcc client.c -lssl -lcrypto -g -o WTF simpleIO.o
 server:
-	gcc server.c -g -pthread -lm -o WTFserver simpleIO.o
+	gcc server.c -g -lssl -lcrypto -pthread -lm -o WTFserver simpleIO.o
 lib:
-	gcc simpleIO.c -g -c -o simpleIO.o
+	gcc simpleIO.c -lssl -lcrypto -g -c -o simpleIO.o
 clean:
 	rm WTF
 	rm simpleIO.o
