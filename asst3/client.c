@@ -85,8 +85,9 @@ int main(int argc, char** argv){
         simpleRead(sock, serMes, len);
         printf("%s\n", serMes);
         free(serMes);
-
-        send(sock, "checkout:4:proj", 16, 0);
+        char command[BUFF_SIZE] = {0};
+        sprintf(command, "checkout:%d:%s", strlen(argv[2]), argv[2]);
+        send(sock, command, strlen(command), 0);
         char message[BUFF_SIZE] = {0};
         for(i = 0; ; i++){
             read(sock, message + i, 1);
@@ -95,11 +96,15 @@ int main(int argc, char** argv){
         }
         message[i] = '\0';
         int size = atoi(message);
-        int tarFD = open("proj.tar.gz", O_RDWR | O_CREAT, S_IRWXU);
+        char tarPath[BUFF_SIZE] = {0};
+        sprintf(tarPath, "%s.tar.gz", argv[2]);
+        int tarFD = open(tarPath, O_RDWR | O_CREAT, S_IRWXU);
         char* tarcontents = malloc(size + 1);
         read(sock, tarcontents, size);
         write(tarFD, tarcontents, size);
         close(tarFD);
+        sprintf(command, "tar xzf %s.tar.gz; rm %s.tar.gz", argv[2], argv[2]);
+        system(command);
         close(sock);
         return 0;
     }
