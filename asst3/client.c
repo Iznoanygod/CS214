@@ -10,7 +10,6 @@
 #include <signal.h>
 #include <math.h>
 
-
 #define BUFF_SIZE 1024
 #define DELIM ":"
 
@@ -27,6 +26,10 @@ int sock;
 
 int main(int argc, char** argv){
     signal(SIGINT, sig_handler);
+	
+	char message[BUFF_SIZE];
+	char ip[64];
+	char port[6];
 	
 	if(argc == 1)
 	{
@@ -50,8 +53,7 @@ int main(int argc, char** argv){
     }
 	if (!strcmp(argv[1], "checkout"))
 	{
-		char *host[2];
-		readConfig(&host);
+	
 		
 		// check if project name exists on client side
 		// check if project exists on server
@@ -62,8 +64,7 @@ int main(int argc, char** argv){
 	}
 	if (!strcmp(argv[1], "update"))
 	{
-		char *host[2];
-		readConfig(&host);
+		
 		
 		// check if project name exists on server
 		// check if our project is up to date (send manifest to server, server compares and responds)
@@ -73,8 +74,7 @@ int main(int argc, char** argv){
 	}
 	if (!strcmp(argv[1], "upgrade"))
 	{
-		char *host[2];
-		readConfig(&host);
+		
 		
 		// check if there is a .Update file		yes-->proceed, no-->tell user to run update
 		// if .Update empty tell user we up to date
@@ -86,7 +86,7 @@ int main(int argc, char** argv){
 	}
 	if (!strcmp(argv[1], "commit"))
 	{
-		char ** host = readConfig();
+		
 		
 		// check if nonempty .Update file exists	no-->proceed
 		// check if .Conflict file exists			no-->proceed
@@ -95,68 +95,62 @@ int main(int argc, char** argv){
 		// go through every file listed in manifest and compute a live hash for it
 		// compare each live hash to the stored hash in the manifest file (write each different case to a .Commit file)
 		// compare servers manifest with client's, check for different hashes with >= version numbers		yes-->tell user to update&upgrade
-		free(host);
+		
 	}
 	if (!strcmp(argv[1], "push"))
 	{
-		char ** host = readConfig();
 		
-		free(host);
+		
+		
 	}
 	if (!strcmp(argv[1], "create"))
 	{
-		char ** host = readConfig();
-		
-		char *args[] = {argv[1], itoa(strlen(argv[2])), argv[2]};
-		char *message = formatMessage(DELIM, 3, args);
-		
-		printf("%s\n", message);
-		//sock = getSocket(host[0], host[1]);
-		//send(sock, message, strlen(message), 0);
-		
-		free(message);
-		free(host);
+		readConfig(ip, port);
+		snprintf(message, BUFF_SIZE, "create:%li:%s:", strlen(argv[2]), argv[2]);
+		sock = getSocket(ip, port);
+		send(sock, message, strlen(message), 0);
 	}
 	if (!strcmp(argv[1], "destroy"))
 	{
-		char ** host = readConfig();
-		free(host);
+		
+		
 	}
 	if (!strcmp(argv[1], "add"))
 	{
-		char ** host = readConfig();
-		free(host);
+		
+		
 	}
 	if (!strcmp(argv[1], "remove"))
 	{
-		char ** host = readConfig();
-		free(host);
+		
+		
 	}
 	if (!strcmp(argv[1], "currentversion"))
 	{
-		char ** host = readConfig();
-		free(host);
+		
+		
 	}
 	if (!strcmp(argv[1], "history"))
 	{
-		char ** host = readConfig();
-		free(host);
+		
+		
 	}
 	if (!strcmp(argv[1], "rollback"))
 	{
-		char ** host = readConfig();
-		free(host);
+		
+		
 	}
 	if (!strcmp(argv[1], "checkout"))
 	{
-		char ** host = readConfig();
-		free(host);
+		
+		
 	}
 }
 
 
 int getSocket(char *ip, char *port_s)
 {
+	printf("%s:%s\n", ip, port_s);
 	int port = atoi(port_s);
 	struct sockaddr_in serv_addr;
 	
@@ -177,7 +171,7 @@ int getSocket(char *ip, char *port_s)
 	
 	if (connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0)
 	{
-		printf("Failed to connect.");
+		printf("Failed to connect.\n");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -194,7 +188,7 @@ void sig_handler(int sig)
 /**
 * ret[0] = ip,  ret[1] = port
 **/
-char ** readConfig()
+void readConfig(char ip[], char port[])
 {
 	int fd = open (".configure", O_RDONLY);
 	if(fd == -1)
@@ -218,15 +212,16 @@ char ** readConfig()
 		totalBytesRead+=bytesRead;
 	} while(bytesRead != 0);
 	
-	char ** ret = malloc(totalBytesRead);
+	buf[totalBytesRead] = '\0';
 	char *token = strtok(buf, " ");
 	int i;
 	for (i = 0; i < 2 && token!=NULL; i++)
 	{
-		ret[i] = token;
+		//ret[i] = token;
+		if (i==0) strcpy(ip,token);
+		if (i==1) strcpy(port,token);
 		token = strtok(NULL, " ");
 	}
-	return ret;
 }
 
 void writeConfig(char *host, char *port)
@@ -256,37 +251,12 @@ void writeConfig(char *host, char *port)
 	}
 }
 
-char * formatMessage(char *delim, int argc, char **args)
+char * itoa(int i)
 {
-	char *message = (char *) malloc(argc+getTotalCharLength(argc, args));
-	int i;
-	for (i = 0; i < argc; i++)
-	{
-		strcat(message, args[i]);
-		strcat(message, delim);
-	}
-	return message;
-}
-
-int getTotalCharLength(int argc, char **args)
-{
-	int ret = 0;
-	int i;
-	for (int i = 0; i < argc; i++)
-	{
-		ret += strlen(args[i]);
-	}
+	int numChars = floor(1 + log10(i));
+	char *ret = (char *) malloc(numChars);
+	snprintf(ret, numChars+1, "%d", i);
 	return ret;
-}
-
-char * itoa(int i) 
-{
-	int size = (ceil(log10(i+1))+1);
-    if(i == 0)
-        size = 2;
-    char * str = (char *) malloc(size);
-	sprintf(str, "%i", i);
-	return str;
 }
 
 bool isNumber(char* in){
