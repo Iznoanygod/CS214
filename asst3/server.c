@@ -112,6 +112,144 @@ void * handleClient(void * args)
             break;
         }
     }
+    if(!strcmp(buffer, "push")){
+        int length;
+        int i;
+         for(i = 0; ;i++){
+            int in = read(sock, buffer+i, 1);
+            if(in < 1){
+                printf("Error: failed reading message from client, closing socket\n");
+                send(sock, "11:messageFail", 15, 0);
+                close(sock);
+                return NULL;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        length = atoi(buffer);
+        char* projN = malloc(length + 1);
+        int in = simpleRead(sock, projN, length);
+        if(in <= 1){
+            printf("Error: failed reading message from client, closing socket\n");
+            send(sock, "11:messageFail", 15, 0);
+            close(sock);
+            return NULL;
+        }
+        pthread_mutex_lock(pLock);
+        PNode* pr = projects;
+        while(pr != NULL){
+            if(!strcmp(pr->project, projN))
+                break;
+            pr = pr->next;
+        }
+        pthread_mutex_unlock(pLock);
+        if(pr == NULL){
+            send(sock, "15:projectNotExist", 19, 0);
+            close(sock);
+            return NULL;
+        }
+        read(sock, buffer, 1);
+        for(i = 0; ;i++){
+            int in = read(sock, buffer+i, 1);
+            if(in < 1){
+                printf("Error: failed reading message from client, closing socket\n");
+                send(sock, "11:messageFail", 15, 0);
+                close(sock);
+                return NULL;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        pthread_mutex_lock(pr->lock);
+        int tarlength = atoi(buffer);
+        char curTar[BUFF_SIZE] = {0};
+        sprintf(curTar, "%s/push.tar.gz", projN);
+        int tfd = open(curTar, O_RDWR | O_CREAT, S_IRWXU);
+        int rdwr = 0;
+        simpleRead(sock, curTar, tarlength);
+        simpleWrite(tfd, curTar, tarlength);
+        close(tfd);
+        close(sock);
+    }
+    if(!strcmp(buffer, "checkout")){
+        int length;
+        int i;
+        for(i = 0; ;i++){
+            int in = read(sock, buffer+i, 1);
+            if(in < 1){
+                printf("Error: failed reading message from client, closing socket\n");
+                send(sock, "11:messageFail", 15, 0);
+                close(sock);
+                return NULL;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        length = atoi(buffer);
+        int in = simpleRead(sock, buffer, length);
+        if(in <= 1){
+            printf("Error: failed reading message from client, closing socket\n");
+            send(sock, "11:messageFail", 15, 0);
+            close(sock);
+            return NULL;
+        }
+
+        buffer[length] = '\0';
+        pthread_mutex_lock(pLock);
+        PNode* pr = projects;
+        while(pr != NULL){
+            if(!strcmp(pr->project, buffer))
+                break;
+            pr = pr->next;
+        }
+        pthread_mutex_unlock(pLock);
+        if(pr == NULL){
+            send(sock, "15:projectNotExist", 19, 0);
+            close(sock);
+            return NULL;
+        }
+        pthread_mutex_lock(pr->lock);
+        char currentVersion[BUFF_SIZE] = {0};
+        char* currentFile = malloc(512);
+        sprintf(currentFile, "%s/.Current", buffer);
+        int cfd = open(currentFile, O_RDONLY);
+        simpleRead(cfd, currentVersion, -1);
+        currentVersion[strlen(currentVersion) - 1] = '\0';
+        free(currentFile);
+        close(cfd);
+        char* systemCopy = malloc(512);
+        sprintf(systemCopy, "cp -R %s/%s %s/%s; cd %s; tar czf %s.tar.gz %s; rm -rf %s; cd ..", buffer, currentVersion, buffer, buffer, buffer, buffer, buffer, buffer);
+        system(systemCopy);
+        sprintf(systemCopy, "%s/%s.tar.gz", buffer, buffer);
+        int tfd = open(systemCopy, O_RDONLY);
+        int size = lseek(tfd, 0, SEEK_END);
+        char* sC = itoa(size);
+        send(sock, sC, strlen(sC), 0);
+        send(sock, ":", 1, 0);
+        free(sC);
+        lseek(tfd, 0, SEEK_SET);
+        char* tarBuf = malloc(size+1);
+        int rdwr = 0;
+        while(1){
+            int status = simpleRead(tfd, tarBuf, size);
+            send(sock, tarBuf, status, 0);
+            rdwr += status;
+            if(rdwr == size)
+                break;
+        }
+        remove(systemCopy);
+        close(tfd);
+        free(tarBuf);
+        close(sock);
+        free(systemCopy);
+        pthread_mutex_unlock(pr->lock);
+    }
     if(!strcmp(buffer, "create")){
         int length;
         int i;
@@ -130,7 +268,7 @@ void * handleClient(void * args)
         }
         length = atoi(buffer);
         int in = simpleRead(sock, buffer, length);
-        if(in != 1){
+        if(in <= 1){
             printf("Error: failed reading message from client, closing socket\n");
             send(sock, "11:messageFail", 15, 0);
             close(sock);
@@ -152,7 +290,25 @@ void * handleClient(void * args)
             return NULL;
         }
         printf("Project successfully created\n");
-        send(sock, "15:projectSuccess", 19, 0);
+        send(sock, "14:projectSuccess", 17, 0);
+        send(sock, ":", 1, 0);
+        char manPath[512] = {0};
+        sprintf(manPath, "gzip -k %s/ver0/.Manifest", buffer);
+        system(manPath);
+        sprintf(manPath, "%s/ver0/.Manifest.gz", buffer);
+        int mfd = open(manPath, O_RDONLY);
+        int msize = lseek(mfd, 0, SEEK_END);
+        char* msizec = itoa(msize);
+        send(sock, msizec, strlen(msizec), 0);
+        send(sock, ":", 1, 0);
+        free(msizec);
+        lseek(mfd, 0, SEEK_SET);
+        char* manifestc = malloc(msize);
+        simpleRead(mfd, manifestc, msize);
+        close(mfd);
+        remove (manPath);
+        send(sock, manifestc, msize, 0);
+        free(manifestc);
         close(sock);
         return NULL;
     }
@@ -174,8 +330,8 @@ void * handleClient(void * args)
         }
         length = atoi(buffer);
         int in = simpleRead(sock, buffer, length);
-        if(in != 1){
-            printf("Error: failed reading message from client, closing socker\n");
+        if(in < 1){
+            printf("Error: failed reading message from client, closing socket\n");
             send(sock, "11:messageFail", 15, 0);
             close(sock);
             return NULL;
@@ -200,6 +356,83 @@ void * handleClient(void * args)
         close(sock);
         return NULL;
     }
+    if(!strcmp(buffer, "currentVersion")){
+        int length;
+        int i;
+        for(i = 0; ;i++){
+            int in = read(sock, buffer+i, 1);
+            if(in < 1){
+                printf("Error: failed reading message from client, closing socket\n");
+                send(sock, "11:messageFail", 15, 0);
+                close(sock);
+                return NULL;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        length = atoi(buffer);
+        int in = simpleRead(sock, buffer, length);
+        if(in <= 1){
+            printf("Error: failed reading message from client, closing socket\n");
+            send(sock, "11:messageFail", 15, 0);
+            close(sock);
+            return NULL;
+        }
+        
+        buffer[length] = '\0';
+        PNode* proj = projects;
+        while(proj != NULL){
+            if(!strcmp(proj->project, buffer))
+                break;
+            proj = proj->next;
+        }
+        if(proj == NULL){
+            printf("Error: failed to get current version, project doesn't exist\n");
+            send(sock, "15:projectNotExist", 19, 0);
+            close(sock);
+            return NULL;
+        }
+        pthread_mutex_lock(proj->lock);
+        char* projCur = malloc(strlen(buffer) + 10);
+        sprintf(projCur, "%s/.Current", buffer);
+        int curFD = open(projCur, O_RDONLY);
+        free(projCur);
+        char version[BUFF_SIZE] = {0};
+        simpleRead(curFD, version, -1);
+        version[strlen(version) - 1] = '\0';
+        close(curFD);
+        char* sysManPathgz = malloc(strlen(buffer) + strlen(version) + 20);
+        char* ManPathgz = malloc(strlen(buffer) + strlen(version) + 15);
+        sprintf(sysManPathgz, "gzip -k %s/%s/.Manifest", buffer, version);
+        sprintf(ManPathgz, "%s/%s/.Manifest.gz", buffer, version);
+        system(sysManPathgz);
+        int gfz = open(ManPathgz, O_RDONLY);
+        int gzs = lseek(gfz, 0, SEEK_END);
+        lseek(gfz, 0, SEEK_SET);
+        char* gzsC = itoa(gzs);
+        send(sock, gzsC, strlen(gzsC), 0);
+        free(gzsC);
+        send(sock, ":", 1, 0);
+        int rdwr = 0;
+        char gzin[BUFF_SIZE] = {0};
+        while(1){
+            int status = simpleRead(gfz, gzin, 1024);
+            send(sock, gzin, status, 0);
+            rdwr += status;
+            if(rdwr == gzs)
+                break;
+        }
+        remove(ManPathgz);
+        free(sysManPathgz);
+        free(ManPathgz);
+        close(gfz);
+        close(sock);
+        pthread_mutex_unlock(proj->lock);
+        return NULL;
+    }
+    send(sock, "16:commandNotFound", 20, 0);
     close(sock);
     return NULL;
 }
@@ -239,7 +472,7 @@ int destroyProject(char* projName){
     return 0;
 }
 
-int rolebackProject(char* projName, int version){
+int rollbackProject(char* projName, int version){
     pthread_mutex_lock(pLock);
     PNode* proj = projects;
     while(proj != NULL){
@@ -273,6 +506,8 @@ int rolebackProject(char* projName, int version){
     sprintf(versionOut, "ver%d\n", version);
     simpleWrite(verFD, versionOut,  -1);
     close(verFD);
+    sprintf(path, "rm %s/commits/*", projName);
+    system(path);
     sprintf(path, "rm -rf %s/ver%d", projName, currentVer);
     system(path);
     int i;
@@ -280,64 +515,12 @@ int rolebackProject(char* projName, int version){
         sprintf(path, "rm %s/ver%d.tar.gz", projName, i);
         system(path);
     }
-    //char decompress[BUFF_SIZE];
     sprintf(path, "%s/ver%d.tar.gz", projName, version);
     unTar(path, projName);
-    /*gzFile fi = gzopen(path,"rb");
-    gzrewind(fi);
-    sprintf(path, "%s/ver%d.tar", projName, version);
-    int tfd = open(path, O_RDWR | O_CREAT | O_APPEND, S_IRWXU);
-    while(!gzeof(fi)){
-        int zlen = gzread(fi, decompress, sizeof(decompress));
-        write(tfd, decompress, zlen); 
-    }
-    gzclose(fi);
-    close(tfd);
-    TAR *pTar = NULL;
-    tar_open(&pTar, path, NULL, O_RDONLY, 0777, TAR_GNU);
-    tar_extract_all(pTar, projName);
-    //deal with decompressed data
-    tar_close(pTar);
-    remove(path);*/
     
-    sprintf(path, "%s/ver%d.tar.gz", projName, version);
     remove(path);
     pthread_mutex_unlock(proj->lock);
     return 1;
-}
-
-int currentVersion(char* projName){
-    pthread_mutex_lock(pLock);
-    PNode* proj = projects;
-    while(proj != NULL){
-        if(!strcmp(proj->project, projName))
-            break;
-        proj = proj->next;
-    }
-    pthread_mutex_unlock(pLock);
-    if(proj == NULL)
-        return -1;
-    pthread_mutex_lock(proj->lock);
-    char path[BUFF_SIZE] = {0};
-    strcpy(path, projName);
-    strcat(path, "/.Current");
-    int verFD = open(path, O_RDONLY);
-    int verSize = lseek(verFD, 0, SEEK_END);
-    lseek(verFD, 0, SEEK_SET);
-    char in[BUFF_SIZE] = {0};
-    int readin = 0;
-    while(1){
-        int status = read(verFD,in+readin, verSize-readin);
-        readin += status;
-        if(readin == verSize)
-            break;
-    }
-    close(verFD);
-    in[readin] = '\0';
-    int currentVer;
-    sscanf(in, "ver%d", &currentVer);
-    pthread_mutex_unlock(proj->lock);
-    return currentVer;
 }
 
 int createProject(char* projName){
@@ -350,6 +533,10 @@ int createProject(char* projName){
         if(mkdir(projName, 0777)){
             return -1;
         }
+        pthread_mutex_lock(pLock);
+        char commit[BUFF_SIZE] = {0};
+        sprintf(commit, "%s/commits", projName);
+        mkdir(commit, 0777);
         char path[BUFF_SIZE] = {0};
         strcpy(path, projName);
         strcat(path, "/ver0");
@@ -373,7 +560,6 @@ int createProject(char* projName){
         strcpy(temp->project, projName);
         temp->lock = malloc(sizeof(pthread_mutex_t));
         pthread_mutex_init(temp->lock, NULL);
-        pthread_mutex_lock(pLock);
         temp->next = projects;
         projects = temp;
         pthread_mutex_unlock(pLock);
@@ -428,7 +614,15 @@ void sig_handler(int sig)
 
 int main(int argc, char *argv[])
 {
-	signal(SIGINT, sig_handler);
+	if(argc != 2){
+        printf("Fatal error: not enough arguments\n");
+        return 0;
+    }
+    if(!isNumber(argv[1])){
+        printf("Fatal error: not a valid port number\n");
+        return 0;
+    }
+    signal(SIGINT, sig_handler);
 	
 	int pfd = open(".projects", O_RDWR | O_CREAT, S_IRWXU);
     char fileIn[BUFF_SIZE] = {0};
@@ -462,8 +656,12 @@ int main(int argc, char *argv[])
 	running = 1;
 	pLock = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(pLock, NULL);
-    
-    acceptClients(25585);
+    int portnum = atoi(argv[1]);
+    if(portnum < 0 || portnum > 65535){
+        printf("Fatal error: not a valid port number\n");
+        return 0;
+    }
+    acceptClients(portnum);
 }
 void createProjectFile(){
     int fd = open(".projects", O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
@@ -479,4 +677,12 @@ void createProjectFile(){
     }
     close(fd);
     pthread_mutex_unlock(pLock);
+}
+int isNumber(char* in){
+    int i;
+    for(i = 0; in[i] != '\0'; i++){
+    if(!isdigit(in[i]))
+        return 0;
+    }
+    return 1;
 }

@@ -24,11 +24,11 @@ int simpleRead(int fd, char* buffer, int maxRead){
             return 0;
         }
         readin += status;
-        if(readin == size)
+        if(readin == size || status == 0)
             break;
     }
     buffer[readin] = '\0';
-    return 1;
+    return readin;
 }
 
 int simpleWrite(int fd, char* buffer, int maxWrite){
@@ -44,10 +44,10 @@ int simpleWrite(int fd, char* buffer, int maxWrite){
             return 0;
         }
         writeout += status;
-        if(writeout == size)
+        if(writeout == size || status == 0)
             break;
     }
-    return 1;
+    return writeout;
 }
 
 int unTar(char* path, char* loc){
@@ -72,7 +72,7 @@ int unTar(char* path, char* loc){
     tar_close(pTar);
     remove(tarPath);*/
     char asd[1024] = {0};
-    sprintf(asd, "tar xzvf %s %s", path, loc);
+    sprintf(asd, "tar xzf %s %s", path, loc);
     system(asd);
     return 1;
 
@@ -88,7 +88,38 @@ int Tar(char* path, char* loc){
     tar_append_eof(pTar);
     tar_close(pTar);*/
     char asd[1024] = {0};
-    sprintf(asd, "tar czvf %s %s", path, loc);
+    sprintf(asd, "tar czf %s %s", path, loc);
     system(asd);
     return 1;
+}
+
+int insertionSort(FNode** toSort){
+    FNode* head = *toSort;
+    if(head == NULL)
+        return 0;
+    FNode* list = head->next;
+    head->next = NULL;
+    while(list != NULL){
+        if(strcmp(list->path, head->path) < 0){
+            FNode* temp = list;
+            list = list->next;
+            temp->next = head;
+            head = temp;
+        }
+        else{
+            FNode* leading = head->next;
+            FNode* trailing = head;
+            while(leading != NULL && strcmp(list->path, leading->path) > 1){
+                leading = leading->next;
+                trailing = trailing->next;
+            }
+            FNode* temp = list;
+            list = list->next;
+            trailing->next = temp;
+            temp->next = leading;
+        }
+    }
+    FNode** root = toSort;
+    *root = head;
+    return 0;
 }

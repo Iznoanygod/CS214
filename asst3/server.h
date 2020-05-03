@@ -22,6 +22,6 @@ char * itoa(int i);
 void createProjectFile();
 int createProject(char* projName);
 int destroyProject(char* projName);
-int rolebackProject(char* projName, int version);
-int currentVersion(char* projName);
+int rollbackProject(char* projName, int version);
+int isNumber(char* in);
 #endif
