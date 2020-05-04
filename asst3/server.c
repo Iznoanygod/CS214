@@ -112,6 +112,74 @@ void * handleClient(void * args)
             break;
         }
     }
+    if(!strcmp(buffer, "update")){
+        char inbound[BUFF_SIZE] = {0};
+        char outbound[BUFF_SIZE] = {0};
+        char systemC[BUFF_SIZE] = {0};
+        int i;
+        for(i = 0; ; i++){
+            read(sock, inbound + i, 1);
+            if(inbound[i] == ':')
+                break;
+        }
+        inbound[i] = '\0';
+        int len = atoi(inbound);
+        simpleRead(sock, inbound, len);
+        char* projName = malloc(len+1);
+        strcpy(projName, inbound);
+        sprintf(systemC, "%s/.Current", projName);
+        int cfd = open(systemC, O_RDONLY);
+        simpleRead(cfd, inbound, -1);
+        close(cfd);
+        char currentVersion[BUFF_SIZE] = {0};
+        sscanf(inbound, "%s", currentVersion);
+        sprintf(systemC, "gzip -k %s/%s/.Manifest", projName, currentVersion);
+        system(systemC);
+        sprintf(systemC, "%s/%s/.Manifest.gz", projName, currentVersion);
+        int mfd = open(systemC, O_RDONLY);
+        int msize = lseek(mfd, 0, SEEK_END);
+        lseek(mfd, 0, SEEK_SET);
+        char* manifestgz = malloc(msize+1);
+        simpleRead(mfd, manifestgz, msize);
+        close(mfd);
+        sprintf(outbound, "%d:", msize);
+        send(sock, outbound, strlen(outbound), 0);
+        send(sock, manifestgz, msize, 0);
+        remove(systemC);
+        close(sock);
+    }
+    if(!strcmp(buffer, "upgrade")){
+        char outbound[BUFF_SIZE] = {0};
+        char inbound[BUFF_SIZE] = {0};
+        char systemC[BUFF_SIZE] = {0};
+        int i;
+        for(i = 0; ; i++){
+            read(sock, inbound + i, 1);
+            if(inbound[i] == ':')
+                break;
+        }
+        inbound[i] = '\0';
+        int len = atoi(inbound);
+        simpleRead(sock, inbound, len);
+        char* projName = malloc(len+1);
+        strcpy(projName, inbound);
+        send(sock, "8:continue", 10, 0);
+        for(i = 0; ; i++){
+            read(sock, inbound + i, 1);
+            if(inbound[i] == ':')
+                break;
+        }
+        inbound[i] = '\0';
+        int uSize = atoi(inbound);
+        simpleRead(sock, inbound, uSize);
+        sprintf(systemC, "%s/.Update.gz", projName);
+        int ufd = open(systemC, O_CREAT | O_RDWR, S_IRWXU);
+        simpleWrite(ufd, inbound, uSize);
+        close(ufd);
+
+        free(projName);
+        close(sock);
+    }
     if(!strcmp(buffer, "commit")){
         char inbound[BUFF_SIZE] = {0};
         char outbound[BUFF_SIZE] = {0};
@@ -141,17 +209,56 @@ void * handleClient(void * args)
         lseek(mfd, 0, SEEK_SET);
         char* manifestgz = malloc(msize+1);
         simpleRead(mfd, manifestgz, msize);
+        close(mfd);
         sprintf(outbound, "%d:", msize);
         send(sock, outbound, strlen(outbound), 0);
         send(sock, manifestgz, msize, 0);
         remove(systemC);
+        for(i = 0; ; i++){
+            read(sock, inbound + i, 1);
+            if(inbound[i] == ':')
+                break;
+        }
+        inbound[i] = '\0';
+        len = atoi(inbound);
+        simpleRead(sock, inbound, len);
+        if(!strcmp(inbound, "commitSuccess")){
+            for(i = 0; ; i++){
+                read(sock, inbound + i, 1);
+                if(inbound[i] == ':')
+                    break;
+            }
+            inbound[i] = '\0';
+            len = atoi(inbound);
+            char* newCommit = malloc(len+1);
+            simpleRead(sock, newCommit, len);
+            sprintf(systemC, "%s/.tCommit.gz", projName);
+            int scfd = open(systemC, O_CREAT | O_RDWR, S_IRWXU);
+            simpleWrite(scfd, newCommit, len);
+            close(scfd);
+            sprintf(systemC, "gunzip %s/.tCommit.gz", projName);
+            system(systemC);
+            sprintf(systemC, "%s/.tCommit", projName);
+            char* sum = md5(systemC);
+            sprintf(systemC, "mv %s/.tCommit %s/commits/%s", projName, projName, sum);
+            system(systemC);
+            free(sum);
+            send(sock, "7:success", 9, 0);
+            free(newCommit);
+        }
         close(mfd);
+        free(projName);
         free(manifestgz);
+        close(sock);
     }
     if(!strcmp(buffer, "push")){
+        char systemC[BUFF_SIZE] = {0};
+        char inbound[BUFF_SIZE] = {0};
+        char outbound[BUFF_SIZE] = {0};
+        
         int length;
         int i;
-         for(i = 0; ;i++){
+        for(i = 0; ;i++){
             int in = read(sock, buffer+i, 1);
             if(in < 1){
                 printf("Error: failed reading message from client, closing socket\n");
@@ -186,7 +293,7 @@ void * handleClient(void * args)
             close(sock);
             return NULL;
         }
-        read(sock, buffer, 1);
+        send(sock, "8:continue", 10, 0);
         for(i = 0; ;i++){
             int in = read(sock, buffer+i, 1);
             if(in < 1){
@@ -201,15 +308,191 @@ void * handleClient(void * args)
             }
         }
         pthread_mutex_lock(pr->lock);
-        int tarlength = atoi(buffer);
-        char curTar[BUFF_SIZE] = {0};
-        sprintf(curTar, "%s/push.tar.gz", projN);
-        int tfd = open(curTar, O_RDWR | O_CREAT, S_IRWXU);
-        int rdwr = 0;
-        simpleRead(sock, curTar, tarlength);
-        simpleWrite(tfd, curTar, tarlength);
-        close(tfd);
-        close(sock);
+        int gzlength = atoi(buffer);
+        sprintf(systemC, "%s/.Commit.gz", projN);
+        int cgz = open(systemC, O_CREAT | O_RDWR, S_IRWXU);
+        char* comgz = malloc(gzlength + 1);
+        simpleRead(sock, comgz, gzlength);
+        simpleWrite(cgz, comgz, gzlength);
+        close(cgz);
+        free(comgz);
+        
+        sprintf(systemC, "gunzip %s/.Commit.gz", projN);
+        system(systemC);
+        sprintf(systemC, "%s/.Commit", projN);
+        char* md5sum = md5(systemC);
+        sprintf(systemC, "%s/commits/%s", projN, md5sum);
+        free(md5sum);
+        if(access(systemC, F_OK) == -1){
+            send(sock, "8:pushFail", 10, 0);
+            close(sock);
+            sprintf(systemC, "%s/.Commit", projN);
+            remove(systemC);
+            pthread_mutex_unlock(pr->lock);
+            return NULL;
+        }
+        send(sock, "8:continue", 10, 0);
+        sprintf(systemC, "%s/.Current", projN);
+        int curFD = open(systemC, O_RDWR);
+        char currentFile[BUFF_SIZE];
+        simpleRead(curFD, currentFile, -1);
+        lseek(curFD, 0, SEEK_SET);
+        int version;
+        sscanf(currentFile, "ver%d", &version);
+        sprintf(systemC, "cp -R %s/ver%d %s/ver%d; tar czf %s/ver%d.tar.gz %s/ver%d; rm -rf %s/ver%d", projN, version, projN, version + 1, projN, version, projN, version, projN, version);
+        system(systemC);
+        sprintf(systemC, "ver%d\n", version+1);
+        simpleWrite(curFD, systemC, -1);
+        close(curFD);
+        for(i = 0; ; i++){
+            read(sock, inbound+i, 1);
+            if(inbound[i] == ':')
+                break;
+        }
+        inbound[i] = '\0';
+        int changeSize = atoi(inbound);
+        char* cFile = malloc(changeSize+1);
+        read(sock, cFile, changeSize);
+        sprintf(systemC, "%s/.Changes.tar.gz", projN);
+        int ChFD = open(systemC, O_RDWR | O_CREAT, S_IRWXU);
+        simpleWrite(ChFD, cFile, changeSize);
+        close(ChFD);
+        sprintf(systemC, "tar xzf %s/.Changes.tar.gz", projN);
+        system(systemC);
+        sprintf(systemC, "%s/.Changes.tar.gz", projN);
+        remove(systemC);
+        sprintf(systemC, "%s/.Commit", projN);
+        int comFD = open(systemC, O_RDONLY);
+        int comSize = lseek(comFD, 0, SEEK_END);
+        lseek(comFD, 0, SEEK_SET);
+        char* comFile = malloc(comSize+1);
+        simpleRead(comFD, comFile, comSize);
+        close(comFD);
+
+        sprintf(outbound, "%s/.History", projN);
+        int hist = open(outbound, O_RDWR | O_APPEND);
+        sprintf(outbound, "Version %d\n", version + 1);
+        simpleWrite(hist, outbound, strlen(outbound));
+        simpleWrite(hist, comFile, comSize);
+        simpleWrite(hist, "\n", 1);
+        close(hist);
+
+        char manifestPath[BUFF_SIZE];
+        sprintf(manifestPath, "%s/ver%d/.Manifest", projN, version + 1);
+        int mfd = open(manifestPath, O_RDWR);
+        int msize = lseek(mfd, 0, SEEK_END);
+        lseek(mfd, 0, SEEK_SET);
+        char* mbuffer = malloc(msize+1);
+        simpleRead(mfd, mbuffer, -1);
+        char* line = malloc(msize + 1);
+        line[0] = '\0';
+        for(i = 0; ; i++){
+            if(mbuffer[i] == '\n')
+                break;
+        }
+        FNode* fileList = NULL;
+        for(++i;i < msize; i++){
+            if(mbuffer[i] == '\n'){
+                int linesize = strlen(line);
+                char* FName = malloc(linesize);
+                char* FHash = malloc(linesize);
+                int FVersion;
+                sscanf(line, "%s %d %s", FName, &FVersion, FHash);
+                FNode* temp = malloc(sizeof(FNode));
+                temp->path = FName;
+                temp->hash = FHash;
+                temp->version = FVersion;
+                temp->next = fileList;
+                fileList = temp;
+                line[0] = '\0';
+            }
+            else{
+                strncat(line, mbuffer+i, 1);
+            }
+        }
+        free(line);
+        char* cline = malloc(comSize+1);
+        version++;
+        cline[0] = '\0';
+        for(i = 0; i < comSize; i++){
+            if(comFile[i] == '\n'){
+                char act;
+                char* path = malloc(strlen(cline));
+                char* hash = malloc(33);
+                sscanf(cline, "%c %s %s", &act, path, hash);
+                if(act == 'R'){
+                    sprintf(systemC, "rm %s/ver%d/%s", projN, version, path);
+                    system(systemC);
+                    FNode* find = fileList;
+                    FNode* trail = NULL;
+                    while(strcmp(find->path, path)){
+                        trail = find;
+                        find = find->next;
+                    }
+                    if(trail == NULL){
+                        fileList = fileList->next;
+                        free(find->path);
+                        free(find->hash);
+                        free(find);
+                    }
+                    else{
+                        trail->next = find->next;
+                        free(find->path);
+                        free(find->hash);
+                        free(find);
+                    }
+                }
+                else{
+                    sprintf(systemC, "cd %s/.Changes; cp --parent %s ../ver%d", projN, path, version);
+                    system(systemC);
+                    if(act == 'A'){
+                        FNode* temp = malloc(sizeof(FNode));
+                        temp->path = path;
+                        temp->hash = hash;
+                        temp->next = fileList;
+                        temp->version = 0;
+                        fileList = temp;
+                    }
+                    else{
+                        FNode* temp = fileList;
+                        while(strcmp(temp->path, path)){
+                            temp = temp->next;
+                        }
+                        free(temp->hash);
+                        temp->hash = hash;
+                        temp->version++;
+                    }
+                }
+                cline[0] = '\0';
+            }
+            else{
+                strncat(cline, comFile+i, 1);
+            }
+        }
+        close(mfd);
+        sprintf(systemC, "%s/ver%d/.Manifest", projN, version);
+        mfd = open(systemC, O_TRUNC | O_RDWR);
+        insertionSort(&fileList);
+        sprintf(systemC, "%d\n", version);
+        write(mfd, systemC, strlen(systemC));
+        while(fileList != NULL){
+            FNode* temp = fileList;
+            fileList = fileList->next;
+            sprintf(systemC, "%s %d %s\n", temp->path, temp->version, temp->hash);
+            write(mfd, systemC, strlen(systemC));
+            free(temp->path);
+            free(temp->hash);
+            free(temp);
+        }
+        close(mfd);
+        sprintf(systemC, "rm -rf %s/.Changes; rm %s/.Commit; rm -rf %s/commits; mkdir %s/commits", projN, projN, projN, projN);
+        free(mbuffer);
+        free(comFile);
+        free(projN);
+        free(cline);
+        free(cFile);
+        system(systemC);
+        pthread_mutex_unlock(pr->lock);
     }
     if(!strcmp(buffer, "checkout")){
         int length;
@@ -410,7 +693,7 @@ void * handleClient(void * args)
         send(sock, ":", 1, 0);
         free(msizec);
         lseek(mfd, 0, SEEK_SET);
-        char* manifestc = malloc(msize);
+        char* manifestc = malloc(msize+1);
         simpleRead(mfd, manifestc, msize);
         close(mfd);
         remove (manPath);
@@ -660,7 +943,9 @@ int createProject(char* projName){
         char init[] = "ver0\n";
         write(fd, init, strlen(init));
         close(fd);
-        
+        sprintf(path, "%s/.History", projName);
+        fd = open(path, O_RDWR | O_CREAT, S_IRWXU);
+        close(fd);
         //adding mutex stuff
         PNode * temp = malloc(sizeof(PNode));
         temp->project = malloc(strlen(projName) + 1);
