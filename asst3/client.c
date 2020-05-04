@@ -14,6 +14,42 @@
 #include "simpleIO.h"
 #define BUFF_SIZE 4096
 
+void readConfig(char ip[], char port[])
+{
+    int fd = open (".configure", O_RDONLY);
+    if(fd == -1)
+    {
+        printf("Fatal error: error reading .configure file\n");
+        exit(EXIT_FAILURE);
+    }
+
+    char buf[64];
+    int totalBytesRead = 0;
+    int bytesRead;
+    do
+    {
+        bytesRead = read(fd, buf+totalBytesRead, 64);
+        if (bytesRead == -1)
+        {
+            printf("Fatal error: error reading .configure file\n");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+        totalBytesRead+=bytesRead;
+    } while(bytesRead != 0);
+
+    buf[totalBytesRead] = '\0';
+    char *token = strtok(buf, " ");
+    int i;
+    for (i = 0; i < 2 && token!=NULL; i++)
+    {
+        //ret[i] = token;
+        if (i==0) strcpy(ip,token);
+        if (i==1) strcpy(port,token);
+        token = strtok(NULL, " ");
+    }
+}
+
 int conServer(char* ip, int port){
     struct sockaddr_in serv_addr;
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -64,6 +100,16 @@ int main(int argc, char** argv){
         }
         return 0;
     }
+    else{
+        if(access(".configure", F_OK ) == -1) {
+            printf("Fatal error: configuration file does not exist\n");
+            return 0;
+        }
+    }
+    char ip[BUFF_SIZE];
+    char portC[BUFF_SIZE];
+    readConfig(ip, portC);
+    int port = atoi(portC);
     if(!strcmp(argv[1], "update")){
         if(argc != 3){
             printf("Fatal error: wrong number of arguments given\n");
@@ -71,10 +117,10 @@ int main(int argc, char** argv){
         }
         char* projName = argv[2];
         
-        int sock = conServer("127.0.0.1", 25585);
+        int sock = conServer(ip, port);
         while(sock == -1){
             sleep(3);
-            sock = conServer("127.0.0.1", 25585);
+            sock = conServer(ip, port);
         }
         
         char message[BUFF_SIZE] = {0};
@@ -337,20 +383,22 @@ int main(int argc, char** argv){
             printf("Project is up to date\n");
             return 0;
         }
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            sock = conServer(ip, port);
+        }
+
         sprintf(systemC, "gzip -k %s/.Update", argv[2]);
         system(systemC);
         sprintf(systemC, "%s/.Update.gz", argv[2]);
         ufd = open(systemC, O_RDWR);
-        size = lseek(ufd, 0 ,SEEK_END);
+        int Usize = lseek(ufd, 0 ,SEEK_END);
         lseek(ufd, 0, SEEK_SET);
-        char* updateFile = malloc(size + 1);
-        simpleRead(ufd, updateFile, size);
+        char* updateFile = malloc(Usize + 1);
+        simpleRead(ufd, updateFile, Usize);
+        remove(systemC);
         free(conflict);
-        int sock = conServer("127.0.0.1", 25585);
-        while(sock == -1){
-            sleep(3);
-            sock = conServer("127.0.0.1", 25585);
-        }
         char message[BUFF_SIZE] = {0};
         int i;
         for(i = 0; ; i++){
@@ -381,11 +429,55 @@ int main(int argc, char** argv){
             close(ufd);
             return 0;
         }
-        sprintf(systemC, "%d:", size);
+        sprintf(systemC, "%d:", Usize);
         send(sock, systemC, strlen(systemC), 0);
-        send(sock, updateFile, size, 0);
+        send(sock, updateFile, Usize, 0);
         
-        
+        for(i = 0; ; i++){
+            read(sock, inbound + i, 1);
+            if(inbound[i] == ':')
+                break;
+        }
+        inbound[i] = '\0';
+        len = atoi(inbound);
+        char* chgz = malloc(len + 1);
+        simpleRead(sock, chgz, len);
+        sprintf(systemC, "%s/.Changes.tar.gz", argv[2]);
+        int chgzfd = open(systemC, O_CREAT | O_RDWR, S_IRWXU);
+        simpleWrite(chgzfd, chgz, len);
+        close(chgzfd);
+        sprintf(systemC, "cd %s; tar xzf .Changes.tar.gz; rm .Changes.tar.gz", argv[2], argv[2]);
+        system(systemC);
+        sprintf(systemC, "cp %s/.Changes/.Manifest %s", argv[2], argv[2]); 
+        system(systemC);
+        sprintf(systemC, "%s/.Update", argv[2]);
+        ufd = open(systemC, O_RDWR);
+        Usize = lseek(ufd, 0, SEEK_END);
+        lseek(ufd, 0, SEEK_SET);
+        updateFile = malloc(Usize+1);
+        simpleRead(ufd, updateFile, Usize);
+        close(ufd);
+        remove(systemC);
+        inbound[0] = '\0';
+        for(i = 0; i < Usize; i++){
+            if(updateFile[i] == '\n'){
+                char action;
+                char* filePath = malloc(Usize);
+                sscanf(inbound, "%c %s", &action, filePath);
+                if(action == 'D'){
+                    sprintf(systemC, "rm %s/%s", argv[2], filePath);
+                    system(systemC);
+                }
+                else{
+                    sprintf(systemC, "cp %s/.Changes/%s %s", argv[2], filePath, argv[2]);
+                    system(systemC);
+                }
+                free(filePath);
+                inbound[0] = '\0';
+            }
+            else
+                strncat(inbound, updateFile+i, 1);
+        }
         close(sock);
     }
     if(!strcmp(argv[1], "commit")){
@@ -410,7 +502,11 @@ int main(int argc, char** argv){
             }
         }
         free(conflict);
-        int sock = conServer("127.0.0.1", 25585);
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            sock = conServer(ip, port);
+        }
         char message[BUFF_SIZE] = {0};
         int i;
         for(i = 0; ; i++){
@@ -664,15 +760,6 @@ int main(int argc, char** argv){
         mesHandle(serMes);
         free(serMes);
        
-        for(i = 0; ;i++){
-            read(sock, inbound + i, 1);
-            if(message[i] == ':')
-                break;
-        }
-        inbound[i] = '\0';
-        len = atoi(message);
-        char* chgz = malloc(len + 1);
-
         close(sock);
         free(commitOut);
         close(commitFD);
@@ -720,7 +807,11 @@ int main(int argc, char** argv){
 
         }
 
-        int sock = conServer("127.0.0.1", 25585);
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            sock = conServer(ip, port);
+        }
         
         char init[BUFF_SIZE] = {0};
         int i;
@@ -874,20 +965,30 @@ int main(int argc, char** argv){
         send(sock, cfile, clength, 0);
         sprintf(systemC, "cd %s; rm -rf .Changes; rm .Changes.tar.gz; rm .Commit", projName);
         system(systemC);
-
+        close(sock);
+        printf("Push Successful\n");
     }
     if(!strcmp(argv[1], "checkout")){
         if(argc != 3){
             printf("Fatal error: wrong number of arguments given\n");
             return 0;
         }
-        struct sockaddr_in serv_addr;
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(25585);
-        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-        connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
         
+        DIR* dir = opendir(argv[2]);
+        if (dir) {
+    /* Directory exists. */
+            printf("Fatal error: project exists locally\n");
+            closedir(dir);
+            return 0;
+        }
+
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            sock = conServer(ip, port);
+        }
+
+
         char init[BUFF_SIZE] = {0};
         int i;
         for(i = 0; ; i++){
@@ -945,13 +1046,12 @@ int main(int argc, char** argv){
             printf("Fatal error: wrong number of arguments given\n");
             return 0;
         }
-        struct sockaddr_in serv_addr;
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(25585);
-        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-        connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-        
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            sock = conServer(ip, port);
+        }
+
         char message[BUFF_SIZE] = {0};
         int i;
         for(i = 0; ; i++){
@@ -989,13 +1089,12 @@ int main(int argc, char** argv){
             printf("Fatal error: wrong number of arguments given\n");
             return 0;
         }
-        struct sockaddr_in serv_addr;
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(25585);
-        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-        connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-        
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            sock = conServer(ip, port);
+        }
+
         char message[BUFF_SIZE] = {0};
         int i;
         for(i = 0; ; i++){
@@ -1056,13 +1155,11 @@ int main(int argc, char** argv){
             printf("Fatal error: wrong number of arguments given\n");
             return 0;
         }
-        struct sockaddr_in serv_addr;
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(25585);
-        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-        connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            int sock = conServer(ip, port);
+        }
         char message[BUFF_SIZE] = {0};
         int i;
         for(i = 0; ; i++){
@@ -1299,12 +1396,11 @@ int main(int argc, char** argv){
             printf("Fatal error: wrong number of arguments given\n");
             return 0;
         }
-        struct sockaddr_in serv_addr;
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(25585);
-        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-        connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sleep(3);
+            sock = conServer(ip, port);
+        }
 
         char message[BUFF_SIZE] = {0};
         int i;
@@ -1377,6 +1473,74 @@ int main(int argc, char** argv){
             }
         }
         free(line);
+        free(tempC);
+        free(serMes);
+    }
+    if(!strcmp(argv[1], "history")){
+        if(argc != 3){
+            printf("Fatal error: wrong number of arguments given\n");
+            return 0;
+        }
+        int sock = conServer(ip, port);
+        while(sock == -1){
+            sock = conServer(ip, port);
+        }
+        char message[BUFF_SIZE] = {0};
+        int i;
+        for(i = 0; ; i++){
+            read(sock, message + i, 1);
+            if(message[i] == ':')
+                break;
+        }
+        message[i] = '\0';
+        int len = atoi(message);
+        char* serMes = malloc(len + 1);
+        simpleRead(sock, serMes, len);
+        mesHandle(serMes);
+        free(serMes);
+        sprintf(message, "history:%d:%s", strlen(argv[2]), argv[2]);
+        send(sock, message, strlen(message), 0);
+        message[0] = '\0';
+        for(i = 0; ; i++){
+            read(sock, message + i, 1);
+            if(message[i] == ':')
+                break;
+        }
+        message[i] = '\0';
+        len = atoi(message);
+        if(!len){
+            for(i = 0; ; i++){
+                read(sock, message + i, 1);
+                if(message[i] == ':')
+                    break;
+            }
+            message[i] = '\0';
+            int flen = atoi(message);
+            char fmes[BUFF_SIZE] = {0};
+            simpleRead(sock, fmes, flen);
+            mesHandle(fmes);
+            close(sock);
+            return 0;
+        }
+        serMes = malloc(len + 1);
+        simpleRead(sock, serMes, len);
+        int gfd = open(".temp.gz", O_RDWR | O_CREAT, S_IRWXU);
+        simpleWrite(gfd, serMes, len);
+        close(gfd);
+        system("gunzip .temp.gz");
+        int tempfd = open(".temp", O_RDONLY);
+        int tempsize = lseek(tempfd, 0, SEEK_END);
+        lseek(tempfd, 0, SEEK_SET);
+        i = 0;
+        char* tempC = malloc(tempsize);
+        simpleRead(tempfd, tempC, tempsize);
+        close(tempfd);
+        remove(".temp");
+        for(i = 0; ; i++){
+            if(tempC[i] == '\n')
+                break;
+        }
+        printf("%s", tempC);
         free(tempC);
         free(serMes);
     }

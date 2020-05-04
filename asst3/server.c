@@ -127,6 +127,19 @@ void * handleClient(void * args)
         simpleRead(sock, inbound, len);
         char* projName = malloc(len+1);
         strcpy(projName, inbound);
+        pthread_mutex_lock(pLock);
+        PNode* pr = projects;
+        while(pr != NULL){
+            if(!strcmp(pr->project, projName))
+                break;
+            pr = pr->next;
+        }
+        pthread_mutex_unlock(pLock);
+        if(pr == NULL){
+            send(sock, "0:15:projectNotExist", 20, 0);
+            close(sock);
+            return NULL;
+        }
         sprintf(systemC, "%s/.Current", projName);
         int cfd = open(systemC, O_RDONLY);
         simpleRead(cfd, inbound, -1);
@@ -146,6 +159,7 @@ void * handleClient(void * args)
         send(sock, outbound, strlen(outbound), 0);
         send(sock, manifestgz, msize, 0);
         remove(systemC);
+        pthread_mutex_unlock(pLock);
         close(sock);
     }
     if(!strcmp(buffer, "upgrade")){
@@ -163,6 +177,13 @@ void * handleClient(void * args)
         simpleRead(sock, inbound, len);
         char* projName = malloc(len+1);
         strcpy(projName, inbound);
+        pthread_mutex_lock(pLock);
+        PNode* pr = projects;
+        while(strcmp(pr->project, projName)){
+            pr = pr->next;
+        }
+        pthread_mutex_unlock(pLock);
+        pthread_mutex_lock(pr->lock);
         send(sock, "8:continue", 10, 0);
         for(i = 0; ; i++){
             read(sock, inbound + i, 1);
@@ -176,9 +197,60 @@ void * handleClient(void * args)
         int ufd = open(systemC, O_CREAT | O_RDWR, S_IRWXU);
         simpleWrite(ufd, inbound, uSize);
         close(ufd);
-
+        sprintf(systemC, "gunzip %s/.Update.gz", projName);
+        system(systemC);
+        sprintf(systemC, "%s/.Changes", projName);
+        mkdir(systemC, 0777);
+        sprintf(systemC, "%s/.Update", projName);
+        ufd = open(systemC, O_RDWR);
+        uSize = lseek(ufd, 0, SEEK_END);
+        lseek(ufd, 0, SEEK_SET);
+        char* update = malloc(uSize + 1);
+        simpleRead(ufd, update, uSize);
+        close(ufd);
+        sprintf(systemC, "%s/.Current", projName);
+        int curFD = open(systemC, O_RDWR);
+        for(i = 0; ; i++){
+            read(curFD, inbound+i, 1);
+            if(inbound[i] == '\n')
+                break;
+        }
+        inbound[i] = '\0';
+        close(curFD);
+        char* current = malloc(strlen(inbound)+1);
+        strcpy(current, inbound);
+        char line[BUFF_SIZE] = {0};
+        sprintf(systemC, "cp %s/%s/.Manifest %s/.Changes", projName, current, projName);
+        system(systemC);
+        for(i = 0; i < uSize; i++){
+            if(update[i] == '\n'){
+                char action;
+                char* path = malloc(strlen(line));
+                sscanf(line, "%c %s", &action, path);
+                if(action == 'A' || action == 'M'){
+                    sprintf(systemC, "cd %s/%s; cp --parents %s ../.Changes", projName, current, path);
+                    system(systemC);
+                }
+            }
+            else
+                strncat(line, update+i, 1);
+        }
+        sprintf(systemC, "cd %s; tar czf .Changes.tar.gz .Changes;rm -rf .Changes; rm .Update", projName);
+        system(systemC);
+        sprintf(systemC,"%s/.Changes.tar.gz", projName);
+        int chgzfd = open(systemC, O_RDWR);
+        int csize = lseek(chgzfd, 0, SEEK_END);
+        lseek(chgzfd, 0, SEEK_SET);
+        char* chgz = malloc(csize+1);
+        simpleRead(chgzfd, chgz, csize);
+        close(chgzfd);
+        remove(systemC);
+        sprintf(outbound, "%d:", csize);
+        send(sock, outbound, strlen(outbound), 0);
+        send(sock, chgz, csize, 0);
         free(projName);
         close(sock);
+        pthread_mutex_unlock(pr->lock);
     }
     if(!strcmp(buffer, "commit")){
         char inbound[BUFF_SIZE] = {0};
@@ -195,6 +267,20 @@ void * handleClient(void * args)
         simpleRead(sock, inbound, len);
         char* projName = malloc(len+1);
         strcpy(projName, inbound);
+        pthread_mutex_lock(pLock);
+        PNode* pr = projects;
+        while(pr != NULL){
+            if(!strcmp(pr->project, projName))
+                break;
+            pr = pr->next;
+        }
+        pthread_mutex_unlock(pLock);
+        if(pr == NULL){
+            send(sock, "15:projectNotExist", 18, 0);
+            close(sock);
+            return NULL;
+        }
+        pthread_mutex_lock(pr->lock);
         sprintf(systemC, "%s/.Current", projName);
         int cfd = open(systemC, O_RDONLY);
         simpleRead(cfd, inbound, -1);
@@ -246,6 +332,7 @@ void * handleClient(void * args)
             send(sock, "7:success", 9, 0);
             free(newCommit);
         }
+        pthread_mutex_unlock(pr->lock);
         close(mfd);
         free(projName);
         free(manifestgz);
@@ -493,6 +580,7 @@ void * handleClient(void * args)
         free(cFile);
         system(systemC);
         pthread_mutex_unlock(pr->lock);
+        close(sock);
     }
     if(!strcmp(buffer, "checkout")){
         int length;
@@ -822,6 +910,74 @@ void * handleClient(void * args)
         pthread_mutex_unlock(proj->lock);
         return NULL;
     }
+    if(!strcmp(buffer, "history")){
+        int length;
+        int i;
+        for(i = 0; ;i++){
+            int in = read(sock, buffer+i, 1);
+            if(in < 1){
+                printf("Error: failed reading message from client, closing socket\n");
+                send(sock, "0:11:messageFail", 16, 0);
+                close(sock);
+                return NULL;
+            }
+            if(buffer[i] == ':'){
+                buffer[i] = '\0';
+                break;
+            }
+        }
+        length = atoi(buffer);
+        int in = simpleRead(sock, buffer, length);
+        if(in <= 1){
+            printf("Error: failed reading message from client, closing socket\n");
+            send(sock, "0:11:messageFail", 16, 0);
+            close(sock);
+            return NULL;
+        }
+
+        buffer[length] = '\0';
+        PNode* proj = projects;
+        while(proj != NULL){
+            if(!strcmp(proj->project, buffer))
+                break;
+            proj = proj->next;
+        }
+        if(proj == NULL){
+            printf("Error: failed to get current version, project doesn't exist\n");
+            send(sock, "0:15:projectNotExist", 20, 0);
+            close(sock);
+            return NULL;
+        }
+        pthread_mutex_lock(proj->lock);
+        char* sysManPathgz = malloc(strlen(buffer) + 20);
+        char* ManPathgz = malloc(strlen(buffer) + 15);
+        sprintf(sysManPathgz, "gzip -k %s/.History", buffer);
+        sprintf(ManPathgz, "%s/.History.gz", buffer);
+        system(sysManPathgz);
+        int gfz = open(ManPathgz, O_RDONLY);
+        int gzs = lseek(gfz, 0, SEEK_END);
+        lseek(gfz, 0, SEEK_SET);
+        char* gzsC = itoa(gzs);
+        send(sock, gzsC, strlen(gzsC), 0);
+        free(gzsC);
+        send(sock, ":", 1, 0);
+        int rdwr = 0;
+        char gzin[BUFF_SIZE] = {0};
+        while(1){
+            int status = simpleRead(gfz, gzin, 1024);
+            send(sock, gzin, status, 0);
+            rdwr += status;
+            if(rdwr == gzs)
+                break;
+        }
+        remove(ManPathgz);
+        free(sysManPathgz);
+        free(ManPathgz);
+        close(gfz);
+        close(sock);
+        pthread_mutex_unlock(proj->lock);
+        return NULL;
+    }
     send(sock, "16:commandNotFound", 20, 0);
     close(sock);
     return NULL;
@@ -908,6 +1064,31 @@ int rollbackProject(char* projName, int version){
     sprintf(path, "%s/ver%d.tar.gz", projName, version);
     unTar(path, projName);
     
+    char systemC[BUFF_SIZE];
+    sprintf(systemC, "%s/.History", projName);
+    int hfd = open(systemC, O_RDWR);
+    int hsize = lseek(hfd, 0, SEEK_END);
+    lseek(hfd, 0, SEEK_SET);
+    char* history = malloc(hsize + 1);
+    simpleRead(hfd, history, hsize);
+    close(hfd);
+    systemC[0] = '\0';
+    char ver[BUFF_SIZE];
+    sprintf(ver, "Version %d", version + 1);
+    for(i = 0; i < hsize; i++){
+        if(history[i] == '\n'){
+            if(!strcmp(ver, systemC))
+                break;
+            systemC[0] = '\0';
+        }
+        else
+            strncat(systemC, history + i, 1);
+    }
+    i = i - strlen(ver);
+    sprintf(systemC, "%s/.History", projName);
+    hfd = open(systemC, O_RDWR | O_TRUNC);
+    simpleWrite(hfd, history, i);
+    close(hfd);
     remove(path);
     pthread_mutex_unlock(proj->lock);
     return 1;
