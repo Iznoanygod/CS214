@@ -773,6 +773,10 @@ int main(int argc, char** argv){
         sprintf(systemC, "%s/.Commit", projName);
         //live hash check here
         int liveCheck = open(systemC, O_RDONLY);
+        if(liveCheck == -1){
+            printf("Fatal error: Commit file does not exist\n");
+            return 0;
+        }
         int liveSize = lseek(liveCheck, 0, SEEK_END);
         lseek(liveCheck, 0, SEEK_SET);
         char* liveCon = malloc(liveSize+1);
