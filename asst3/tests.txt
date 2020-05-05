@@ -1,0 +1,45 @@
+mkdir clients	#
+mkdir clients/client1	#
+cp WTF clients/client1	#
+cd clients/client1 && ./WTF create proj1	Fatal error: configuration file does not exist
+cd clients/client1 && ./WTF configure 127.0.0.1 pancake	Fatal error: port number is not valid
+cd clients/client1 && ./WTF configure 127.0.0.1 25585	
+cd clients/client1 && ./WTF destroy proj1	Error: project does not exist
+cd clients/client1 && ./WTF checkout proj1	Error: project does not exist
+cd clients/client1 && ./WTF currentversion proj1	Error: project does not exist
+cd clients/client1 && ./WTF update proj1	Error: project does not exist
+cd clients/client1 && ./WTF upgrade proj1	Fatal error: update file does not exist
+cd clients/client1 && ./WTF add proj1 test.txt	Fatal error: project does not exist locally
+cd clients/client1 && ./WTF rollback proj1 0	Error: project does not exist
+cd clients/client1 && ./WTF history proj1	Error: project does not exist
+cd clients/client1 && ./WTF remove proj1 test.txt	Fatal error: project does not exist locally
+cd clients/client1 && ./WTF push proj1	Fatal error: Commit file does not exist
+cd clients/client1 && ./WTF commit proj1	Fatal error: project does not exist locally
+cd clients/client1 && ./WTF create proj1	Command sent successfully
+cd clients/client1 && ./WTF create proj1	Error: project already exists
+cd clients/client1 && ./WTF checkout proj1	Fatal error: project exists locally
+cd clients/client1 && ./WTF add proj1 test.txt	Fatal error: file does not exist
+cd clients/client1 && ./WTF update proj1	Local project is up to date
+cd clients/client1 && echo apple > proj1/test.txt	#
+cd clients/client1 && ./WTF add proj1 test.txt	
+cd clients/client1 && ./WTF commit proj1	Success
+cd clients/client1 && ./WTF push proj1	Push Successful
+mkdir clients/client2	#
+cp WTF clients/client2	#
+cd clients/client2 && ./WTF configure 127.0.0.1 25585	
+cd clients/client2 && ./WTF checkout proj1	#
+cd clients/client1 && echo banana > proj1/test.txt	#
+cd clients/client1 && ./WTF add proj1 test.txt	
+cd clients/client1 && ./WTF commit proj1	Success
+cd clients/client1 && ./WTF push proj1	Push Successful
+cd clients/client2 && echo clementine > proj1/test.txt	#
+cd clients/client2 && ./WTF add proj1 test.txt	
+cd clients/client2 && ./WTF commit proj1	Fatal error: please update your local project
+cd clients/client1 && ./WTF remove proj1 test.txt	
+cd clients/client1 && ./WTF commit proj1	Success
+cd clients/client1 && ./WTF push proj1	Push Successful
+cd clients/client1 && ./WTF currentversion proj1	3
+cd clients/client1 && ./WTF history proj1	*
+rm -rf clients/client1/proj1	#
+cd clients/client1 && ./WTF destroy proj1	Command sent successfully
+cd clients/client1 && ./WTF checkout proj1	Error: project does not exist
