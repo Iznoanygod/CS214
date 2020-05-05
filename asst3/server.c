@@ -146,7 +146,7 @@ void * handleClient(void * args)
         close(cfd);
         char currentVersion[BUFF_SIZE] = {0};
         sscanf(inbound, "%s", currentVersion);
-        sprintf(systemC, "gzip -k %s/%s/.Manifest", projName, currentVersion);
+        sprintf(systemC, "gzip -c %s/%s/.Manifest > %s/%s/.Manifest.gz", projName, currentVersion, projName, currentVersion);
         system(systemC);
         sprintf(systemC, "%s/%s/.Manifest.gz", projName, currentVersion);
         int mfd = open(systemC, O_RDONLY);
@@ -287,7 +287,7 @@ void * handleClient(void * args)
         close(cfd);
         char currentVersion[BUFF_SIZE] = {0};
         sscanf(inbound, "%s", currentVersion);
-        sprintf(systemC, "gzip -k %s/%s/.Manifest", projName, currentVersion);
+        sprintf(systemC, "gzip -c %s/%s/.Manifest > %s/%s/.Manifest.gz", projName, currentVersion, projName, currentVersion);
         system(systemC);
         sprintf(systemC, "%s/%s/.Manifest.gz", projName, currentVersion);
         int mfd = open(systemC, O_RDONLY);
@@ -771,7 +771,7 @@ void * handleClient(void * args)
         send(sock, "14:projectSuccess", 17, 0);
         send(sock, ":", 1, 0);
         char manPath[512] = {0};
-        sprintf(manPath, "gzip -k %s/ver0/.Manifest", buffer);
+        sprintf(manPath, "gzip %s/ver0/.Manifest > %s/ver0/.Manifest", buffer, buffer);
         system(manPath);
         sprintf(manPath, "%s/ver0/.Manifest.gz", buffer);
         int mfd = open(manPath, O_RDONLY);
@@ -883,7 +883,7 @@ void * handleClient(void * args)
         close(curFD);
         char* sysManPathgz = malloc(strlen(buffer) + strlen(version) + 20);
         char* ManPathgz = malloc(strlen(buffer) + strlen(version) + 15);
-        sprintf(sysManPathgz, "gzip -k %s/%s/.Manifest", buffer, version);
+        sprintf(sysManPathgz, "gzip -c %s/%s/.Manifest > %s/%s/.Manifest.gz", buffer, version, buffer, version);
         sprintf(ManPathgz, "%s/%s/.Manifest.gz", buffer, version);
         system(sysManPathgz);
         int gfz = open(ManPathgz, O_RDONLY);
@@ -951,7 +951,7 @@ void * handleClient(void * args)
         pthread_mutex_lock(proj->lock);
         char* sysManPathgz = malloc(strlen(buffer) + 20);
         char* ManPathgz = malloc(strlen(buffer) + 15);
-        sprintf(sysManPathgz, "gzip -k %s/.History", buffer);
+        sprintf(sysManPathgz, "gzip -c %s/.History > %s/.History", buffer, buffer);
         sprintf(ManPathgz, "%s/.History.gz", buffer);
         system(sysManPathgz);
         int gfz = open(ManPathgz, O_RDONLY);

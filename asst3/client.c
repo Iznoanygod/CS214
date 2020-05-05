@@ -389,7 +389,7 @@ int main(int argc, char** argv){
             sock = conServer(ip, port);
         }
 
-        sprintf(systemC, "gzip -k %s/.Update", argv[2]);
+        sprintf(systemC, "gzip -c %s/.Update > %s/.Update.gz", argv[2], argv[2]);
         system(systemC);
         sprintf(systemC, "%s/.Update.gz", argv[2]);
         ufd = open(systemC, O_RDWR);
@@ -740,7 +740,7 @@ int main(int argc, char** argv){
             close(sock);
             return 0;
         }
-        sprintf(systemC, "gzip -k %s/.Commit", argv[2]);
+        sprintf(systemC, "gzip -c %s/.Commit > %s/.Commit.gz", argv[2], argv[2]);
         system(systemC);
         sprintf(systemC, "%s/.Commit.gz", argv[2]);
         commitFD = open(systemC, O_RDONLY);
@@ -854,7 +854,7 @@ int main(int argc, char** argv){
             close(sock);
             return 0;
         }
-        sprintf(systemC, "gzip -k %s/.Commit", projName);
+        sprintf(systemC, "gzip -c %s/.Commit > %s/.Commit.gz", projName, projName);
         system(systemC);
         sprintf(systemC, "%s/.Commit.gz", projName);
         int cgz = open(systemC, O_RDONLY);
