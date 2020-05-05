@@ -771,7 +771,7 @@ void * handleClient(void * args)
         send(sock, "14:projectSuccess", 17, 0);
         send(sock, ":", 1, 0);
         char manPath[512] = {0};
-        sprintf(manPath, "gzip %s/ver0/.Manifest > %s/ver0/.Manifest", buffer, buffer);
+        sprintf(manPath, "gzip -c %s/ver0/.Manifest > %s/ver0/.Manifest.gz", buffer, buffer);
         system(manPath);
         sprintf(manPath, "%s/ver0/.Manifest.gz", buffer);
         int mfd = open(manPath, O_RDONLY);
