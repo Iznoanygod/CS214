@@ -485,6 +485,12 @@ int main(int argc, char** argv){
             printf("Fatal error: wrong number of arguments given\n");
             return 0;
         }
+        DIR* dir = opendir(argv[2]);
+        if(!dir){
+            printf("Fatal error: project does not exist locally\n");
+            return 0;
+        }
+        closedir(dir);
         char* conflict = malloc(512);
         sprintf(conflict, "%s/.Conflict", argv[2]);
         if(access(conflict, F_OK ) != -1 ) {
@@ -1199,7 +1205,7 @@ int main(int argc, char** argv){
         }
         DIR* dir = opendir(argv[2]);
         if(!dir){
-            printf("Fatal error: project does not exist\n");
+            printf("Fatal error: project does not exist locally\n");
             return 0;
         }
         closedir(dir);
@@ -1299,7 +1305,7 @@ int main(int argc, char** argv){
         }
         DIR* dir = opendir(argv[2]);
         if(!dir){
-            printf("Fatal error: project does not exist\n");
+            printf("Fatal error: project does not exist locally\n");
             return 0;
         }
         closedir(dir);

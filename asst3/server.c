@@ -276,7 +276,7 @@ void * handleClient(void * args)
         }
         pthread_mutex_unlock(pLock);
         if(pr == NULL){
-            send(sock, "15:projectNotExist", 18, 0);
+            send(sock, "0:15:projectNotExist", 20, 0);
             close(sock);
             return NULL;
         }
