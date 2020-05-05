@@ -74,12 +74,12 @@ int main(int argc, char **argv)
 			curr->command = command;
 			mark = i+1;
 		}
-		if (buff[i] == '\n' && buff[i-1] == '\r')
+		if (buff[i] == '\n')
 		{
-			char *output = malloc(i - mark);
-			memcpy(output, &buff[mark], i-mark-1);
-			output[i-mark-1] = '\0'; 
-			//printf("%i\n", (int)output[i-mark-1]);
+			char *output = malloc(i - mark+1);
+			memcpy(output, &buff[mark], i-mark);
+			output[i-mark] = '\0'; 
+			//printf("%i\n", (int)output[i-mark]);
 			curr->output = output;
 			mark = i+1;
 			if (i!=size-1)
