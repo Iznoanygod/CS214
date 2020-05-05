@@ -879,9 +879,10 @@ void * handleClient(void * args)
         free(projCur);
         char version[BUFF_SIZE] = {0};
         simpleRead(curFD, version, -1);
-        version[strlen(version) - 1] = '\0';
+        version[strlen(version)-1] = '\0';
         close(curFD);
-        char* sysManPathgz = malloc(strlen(buffer) + strlen(version) + 20);
+	printf("current version: %s\n", version);
+        char* sysManPathgz = malloc(strlen(buffer)*2 + strlen(version)*2 + 40);
         char* ManPathgz = malloc(strlen(buffer) + strlen(version) + 15);
         sprintf(sysManPathgz, "gzip -c %s/%s/.Manifest > %s/%s/.Manifest.gz", buffer, version, buffer, version);
         sprintf(ManPathgz, "%s/%s/.Manifest.gz", buffer, version);
@@ -904,7 +905,7 @@ void * handleClient(void * args)
         }
         remove(ManPathgz);
         free(sysManPathgz);
-        free(ManPathgz);
+	free(ManPathgz);
         close(gfz);
         close(sock);
         pthread_mutex_unlock(proj->lock);
@@ -949,9 +950,9 @@ void * handleClient(void * args)
             return NULL;
         }
         pthread_mutex_lock(proj->lock);
-        char* sysManPathgz = malloc(strlen(buffer) + 20);
+        char* sysManPathgz = malloc(strlen(buffer)*2 + 40);
         char* ManPathgz = malloc(strlen(buffer) + 15);
-        sprintf(sysManPathgz, "gzip -c %s/.History > %s/.History", buffer, buffer);
+        sprintf(sysManPathgz, "gzip -c %s/.History > %s/.History.gz", buffer, buffer);
         sprintf(ManPathgz, "%s/.History.gz", buffer);
         system(sysManPathgz);
         int gfz = open(ManPathgz, O_RDONLY);
@@ -1146,13 +1147,28 @@ int createProject(char* projName){
 
 char * itoa(int i) 
 {
-	int size = (ceil(log10(i+1))+1);
-    if(i == 0)
-        size = 2;
-    char * str = (char *) malloc(size);
-	sprintf(str, "%i", i);
+	int size;
+	if (i == 0)
+	{
+		size = 2;
+	}
+	else
+	{
+		size = (floor(log10(i))+1)+1;
+	}
+	//printf("Number: %i, Size: %i\n", i, size);
+    	char * str = (char *) malloc(size);
+	snprintf(str, size, "%i", i);
 	return str;
 }
+
+/*char * itoa(int i)
+{
+	int numChars = (i==0) ? 1 : floor(1 + log10(i));
+	char *ret = (char *) malloc(numChars+1);
+	snprintf(ret, numChars, "%i", i);
+	return ret;
+}*/
 
 void collectThreads(TNode *head)
 {

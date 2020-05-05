@@ -1469,8 +1469,8 @@ int main(int argc, char** argv){
         }
         char* line = malloc(tempsize);
         line[0] = '\0';
-        for(++i; i < tempsize; i++){
-            if(tempC[i] == '\n'){
+        for(++i; i < tempsize; i++){   
+	 if(tempC[i] == '\n'){
                 char* file = malloc(tempsize);
                 int ver;
                 sscanf(line, "%s %d %*s", file, &ver);

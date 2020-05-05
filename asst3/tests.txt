@@ -35,10 +35,10 @@ cd clients/client1 && ./WTF push proj1	Push Successful
 cd clients/client2 && echo clementine > proj1/test.txt	#
 cd clients/client2 && ./WTF add proj1 test.txt	
 cd clients/client2 && ./WTF commit proj1	Fatal error: please update your local project
+cd clients/client1 && ./WTF currentversion proj1	*
 cd clients/client1 && ./WTF remove proj1 test.txt	
 cd clients/client1 && ./WTF commit proj1	Success
 cd clients/client1 && ./WTF push proj1	Push Successful
-cd clients/client1 && ./WTF currentversion proj1	3
 cd clients/client1 && ./WTF history proj1	*
 rm -rf clients/client1/proj1	#
 cd clients/client1 && ./WTF destroy proj1	Command sent successfully

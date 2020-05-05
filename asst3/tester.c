@@ -49,6 +49,7 @@ void freeCNodeList(CNode *head)
 
 int main(int argc, char **argv)
 {
+	sleep(5);
 	int fd = open(argv[1], O_RDONLY);
 	int size = lseek(fd, 0, SEEK_END);
 	lseek(fd, 0, SEEK_SET);
@@ -94,8 +95,7 @@ int main(int argc, char **argv)
 	curr = head;
 	while (curr != NULL)
 	{
-		
-		char sysCom[strlen(curr->command) + 3 + strlen(argv[2])];
+		char sysCom[128];
 		sysCom[0] = '\0';
 		strcat(sysCom,curr->command);
 		strcat(sysCom," > ");
@@ -162,6 +162,7 @@ int main(int argc, char **argv)
 		}
 		curr = curr->next;
 		close(tempoutfd);
+		//sleep(1);
 	}
 	
 	//printCNodeCommands(head);
