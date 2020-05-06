@@ -1,0 +1,25 @@
+Test Plan
+
+Our tester runs through probable scenarios for points of failure with multiple clients and checks the stdout of each client to make sure
+that each error (or success) is dealt with appropriately by the server.
+
+Usage: ./WTFtest [test document] [temporary stdout ABSOLUTE path]
+
+Argument 1 is the location of the document containing the tests. The format for this document is:
+	- [client command]\t[expected output]\n
+	- There is special formatting available for the [expected output]
+		- * = pass output to stdout and let user decide if the result passed
+		- # = ignore expected output (for things like system commands)
+
+Argument 2 is an ABSOLUTE location that can be used as temporary storage for stdout. Note, you must include the file name, any will do.
+
+For example, to run our testcases the full usage is:
+	1. ./WTFserver 25585
+	2. ./WTFtest tests.txt /ilab/users/[your username]/tempstdout
+	3. Ctrl+C server
+	4. rm -rf clients/ proj1/ .projects	(to clear files generated from the test, cannot be done while server is running)
+
+
+
+
+

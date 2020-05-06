@@ -162,11 +162,11 @@ int main(int argc, char **argv)
 		}
 		curr = curr->next;
 		close(tempoutfd);
-		//sleep(1);
+		sleep(0.75);
 	}
 	
 	//printCNodeCommands(head);
 	//printCNodeOutputs(head);
-	
+	remove(argv[2]);	
 	freeCNodeList(head);
 }
